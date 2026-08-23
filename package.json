@@ -1,0 +1,39 @@
+{
+  "name": "smartgov-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "^4.0.56",
+    "@ai-sdk/react": "^4.0.74",
+    "@auth0/nextjs-auth0": "^4.27.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@neondatabase/serverless": "^1.1.0",
+    "@openfga/sdk": "^0.9.7",
+    "ai": "^7.0.70",
+    "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.9",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

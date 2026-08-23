@@ -1,0 +1,27 @@
+model
+  schema 1.1
+
+type user
+
+type agent
+
+type case
+  relations
+    # Human ownership — granted automatically at case creation, never
+    # toggled. Gates the citizen's own view of their own case.
+    define owner: [user]
+
+    # Plain delegation — toggled on/off live by the citizen. Gates the
+    # agent's chat replies and most MCP tool calls (e.g. check_case_status).
+    # Deliberately unconditional: view access isn't time-boxed.
+    define agent_delegate: [agent]
+
+    # A second, conditioned relation written/removed by the SAME toggle
+    # action as agent_delegate (see setAgentDelegation). Gates only the
+    # submit_appeal tool: delegation must be granted AND the case must
+    # still be inside its appeal window.
+    define agent_can_submit_appeal: [agent with appeal_window]
+
+condition appeal_window(current_time: timestamp, assessment_time: timestamp) {
+  current_time < assessment_time + duration("720h")
+}
