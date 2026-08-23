@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { streamText, tool, type UIMessage, convertToModelMessages } from 'ai';
-import { gateway } from '@ai-sdk/gateway';
 import { z } from 'zod';
 import { auth0 } from '@/lib/auth0';
+import { chatModel } from '@/lib/ai';
 import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
 
 // The hot path every attendee uses: wires the SAME tool handlers as
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const trace = (event: TraceEvent) => traceEvents.push(event);
 
   const result = streamText({
-    model: gateway(process.env.AI_GATEWAY_MODEL ?? 'amazon/nova-pro'),
+    model: chatModel(),
     system:
       "You are a citizen's own AI assistant for the SmartGov case portal. " +
       'You can only act within whatever delegation the citizen has granted you — ' +
