@@ -45,7 +45,7 @@ DATABASE_URL=
 
 # Vercel AI Gateway
 AI_GATEWAY_API_KEY=<your Vercel AI Gateway key>
-AI_GATEWAY_MODEL=openai/gpt-5.4-fast
+AI_GATEWAY_MODEL=amazon/nova-pro
 ```
 
 ## A note on secrets

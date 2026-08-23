@@ -6,7 +6,7 @@ SmartGov Citizen Portal — the workshop demo for apidays Australia 2026's sessi
 - [Auth0](https://auth0.com/) for citizen login (`@auth0/nextjs-auth0`)
 - [Auth0 FGA](https://auth0.com/fine-grained-authorization) for delegated authorisation — see `fga-model.fga`
 - [Model Context Protocol](https://modelcontextprotocol.io/) server, exposed as a stateless Vercel Function (`src/app/api/mcp`)
-- [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) for the chat assistant
+- [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) routing to Amazon Bedrock's Nova Pro model for the chat assistant
 - Postgres via [Neon](https://neon.tech/), [Drizzle ORM](https://orm.drizzle.team/)
 
 ## Deploying your own copy
@@ -24,7 +24,7 @@ Nothing in this repo is tied to a specific Auth0 tenant, FGA store, or database 
 
 3. **Database** — create a Neon Postgres project, use the pooled connection string, and run `npm run db:push` to apply the schema.
 
-4. **Vercel AI Gateway** — get an API key from your Vercel account.
+4. **Vercel AI Gateway** — get an API key from your Vercel account. No AWS credentials needed in this app; the Gateway calls Bedrock's Nova Pro model (`amazon/nova-pro`) using Vercel's own Bedrock access, not yours.
 
 5. **Environment variables** — copy `ENV_TEMPLATE.md` into `.env.local` and fill in every value from steps 1-4. Nothing in this repo has default values for these; the app won't start without them.
 

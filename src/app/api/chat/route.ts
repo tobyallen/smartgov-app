@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const trace = (event: TraceEvent) => traceEvents.push(event);
 
   const result = streamText({
-    model: gateway(process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.4-fast'),
+    model: gateway(process.env.AI_GATEWAY_MODEL ?? 'amazon/nova-pro'),
     system:
       "You are a citizen's own AI assistant for the SmartGov case portal. " +
       'You can only act within whatever delegation the citizen has granted you — ' +
