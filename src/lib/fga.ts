@@ -1,6 +1,5 @@
 import { OpenFgaClient, CredentialsMethod } from '@openfga/sdk';
-import { db } from './db';
-import { auditEvents } from './db/schema';
+import { firestore } from './firebase-admin';
 
 // Configured against Auth0 FGA's hosted endpoint (see ENV_TEMPLATE.md) —
 // never a self-hosted OpenFGA instance. Constructed lazily: the SDK
@@ -62,14 +61,16 @@ export async function checkAndLog({
     decision = false; // fail closed
   }
 
-  await db.insert(auditEvents).values({
+  await firestore().collection('auditEvents').add({
     citizenUserId,
     eventType: 'check',
     subject,
-    relation,
-    object,
+    relation: relation ?? null,
+    object: object ?? null,
     context: context ?? null,
     decision,
+    detail: null,
+    createdAt: new Date(),
   });
 
   return decision;
@@ -97,7 +98,7 @@ export async function setAgentDelegation(
   // — the model requires every tuple written for it to explicitly declare
   // that condition, even though we deliberately store no context on the
   // tuple itself (current_time/assessment_time are supplied fresh at
-  // check time from our own Postgres data, not from FGA tuple storage).
+  // check time from our own Firestore data, not from FGA tuple storage).
   const writeKeys = [
     { user: agentId, relation: 'agent_delegate', object: caseId },
     {
@@ -116,20 +117,23 @@ export async function setAgentDelegation(
 
   await getFgaClient().write(granted ? { writes: writeKeys } : { deletes: deleteKeys });
 
-  await db.insert(auditEvents).values({
+  await firestore().collection('auditEvents').add({
     citizenUserId,
     eventType: granted ? 'tuple_write' : 'tuple_delete',
     subject: agentId,
     relation: 'agent_delegate,agent_can_submit_appeal',
     object: caseId,
+    context: null,
     decision: null,
+    detail: null,
+    createdAt: new Date(),
   });
 }
 
 /**
  * The submit_appeal boundary specifically: delegation must be granted AND
  * the case must still be inside its appeal window. assessmentTime comes
- * from our own Postgres `cases` row, not from FGA-stored tuple context —
+ * from our own `cases` Firestore doc, not from FGA-stored tuple context —
  * FGA only evaluates the condition against what's supplied here.
  */
 export async function checkAppealWindow({
@@ -163,11 +167,15 @@ export async function logOboExchange({
   citizenUserId: string;
   detail: Record<string, unknown>;
 }) {
-  await db.insert(auditEvents).values({
+  await firestore().collection('auditEvents').add({
     citizenUserId,
     eventType: 'obo_exchange',
     subject: `user:${citizenUserId}`,
+    relation: null,
+    object: null,
+    context: null,
     decision: null,
     detail,
+    createdAt: new Date(),
   });
 }

@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { auth0 } from '@/lib/auth0';
-import { db } from '@/lib/db';
-import { cases } from '@/lib/db/schema';
 import { checkAndLog, setAgentDelegation } from '@/lib/fga';
-import { agentIdFor, caseIdFor } from '@/lib/provisioning';
+import { agentIdFor, caseIdFor, findCaseByCitizen } from '@/lib/provisioning';
 
 export async function GET() {
   const session = await auth0.getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const citizenUserId = session.user.sub;
 
-  const row = await db.query.cases.findFirst({ where: eq(cases.citizenUserId, citizenUserId) });
+  const row = await findCaseByCitizen(citizenUserId);
   if (!row) return NextResponse.json({ granted: false });
 
   const granted = await checkAndLog({
@@ -30,7 +27,7 @@ export async function POST(request: NextRequest) {
   const { granted } = (await request.json()) as { granted: boolean };
   const citizenUserId = session.user.sub;
 
-  const row = await db.query.cases.findFirst({ where: eq(cases.citizenUserId, citizenUserId) });
+  const row = await findCaseByCitizen(citizenUserId);
   if (!row) return NextResponse.json({ error: 'No case found' }, { status: 404 });
 
   // Blocks on the FGA write completing before returning — the UI should

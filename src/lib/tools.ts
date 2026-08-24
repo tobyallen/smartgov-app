@@ -1,8 +1,5 @@
-import { eq } from 'drizzle-orm';
-import { db } from './db';
-import { cases } from './db/schema';
 import { checkAndLog, checkAppealWindow } from './fga';
-import { agentIdFor, caseIdFor } from './provisioning';
+import { agentIdFor, caseIdFor, findCaseByCitizen } from './provisioning';
 import { exchangeForCaseService } from './obo';
 
 export type TraceEvent = {
@@ -25,9 +22,7 @@ export type ToolContext = {
  */
 
 export async function checkCaseStatus(ctx: ToolContext) {
-  const row = await db.query.cases.findFirst({
-    where: eq(cases.citizenUserId, ctx.citizenUserId),
-  });
+  const row = await findCaseByCitizen(ctx.citizenUserId);
   if (!row) return { error: 'No case found.' };
 
   const agentId = agentIdFor(ctx.citizenUserId);
@@ -49,9 +44,7 @@ export async function checkCaseStatus(ctx: ToolContext) {
 }
 
 export async function submitAppeal(ctx: ToolContext) {
-  const row = await db.query.cases.findFirst({
-    where: eq(cases.citizenUserId, ctx.citizenUserId),
-  });
+  const row = await findCaseByCitizen(ctx.citizenUserId);
   if (!row) return { error: 'No case found.' };
 
   const agentId = agentIdFor(ctx.citizenUserId);

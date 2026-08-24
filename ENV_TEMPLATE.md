@@ -1,9 +1,9 @@
 # Environment variables
 
 Copy this into `.env.local` (gitignored — never commit it) and fill in
-every value from your own Auth0 tenant, Auth0 FGA store, and Neon
-database. Nothing here is shared across deployments; every value below
-is specific to the tenant/store/database you create when you follow the
+every value from your own Auth0 tenant, Auth0 FGA store, and Firebase
+project. Nothing here is shared across deployments; every value below
+is specific to the tenant/store/project you create when you follow the
 setup steps in the README.
 
 ```
@@ -40,8 +40,14 @@ FGA_CLIENT_SECRET=<your FGA API client secret>
 FGA_API_TOKEN_ISSUER=auth.fga.dev
 FGA_API_AUDIENCE=https://api.us1.fga.dev/
 
-# Database (Neon — use the POOLED connection string, not the direct one)
-DATABASE_URL=
+# Firebase (Admin SDK, server-side only) — app state (cases, agent
+# identities, the audit log). Not the source of truth for authorization;
+# that's Auth0 FGA above. Create a project at console.firebase.google.com,
+# enable Firestore, then Project Settings -> Service Accounts -> Generate
+# new private key to get these three values from the downloaded JSON.
+FIREBASE_PROJECT_ID=<your Firebase project ID>
+FIREBASE_CLIENT_EMAIL=<the "client_email" field from the service account JSON>
+FIREBASE_PRIVATE_KEY="<the "private_key" field from the service account JSON, including -----BEGIN/END----- lines>"
 
 # Vercel AI Gateway
 AI_GATEWAY_API_KEY=<your Vercel AI Gateway key>

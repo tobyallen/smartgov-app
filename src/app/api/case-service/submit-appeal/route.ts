@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { eq } from 'drizzle-orm';
-import { db } from '@/lib/db';
-import { cases } from '@/lib/db/schema';
+import { firestore } from '@/lib/firebase-admin';
 import { checkAndLog } from '@/lib/fga';
-import { caseIdFor, agentIdFor } from '@/lib/provisioning';
+import { caseIdFor, agentIdFor, findCaseById } from '@/lib/provisioning';
 
 // The downstream "case service" — deliberately a separate API identity
 // (Custom API / resource server in Auth0) from the main app, so the OBO
@@ -40,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { caseId: caseRowId } = await request.json();
-  const row = await db.query.cases.findFirst({ where: eq(cases.id, caseRowId) });
+  const row = await findCaseById(caseRowId);
   if (!row || row.citizenUserId !== citizenUserId) {
     return NextResponse.json({ error: 'Case not found' }, { status: 404 });
   }
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Denied by Case Service FGA check' }, { status: 403 });
   }
 
-  await db.update(cases).set({ status: 'appeal_submitted' }).where(eq(cases.id, row.id));
+  await firestore().collection('cases').doc(row.id).update({ status: 'appeal_submitted' });
 
   return NextResponse.json({ submitted: true });
 }

@@ -1,9 +1,6 @@
 import { auth0 } from '@/lib/auth0';
-import { db } from '@/lib/db';
-import { cases } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { checkAndLog } from '@/lib/fga';
-import { caseIdFor, ensureCitizenProvisioned } from '@/lib/provisioning';
+import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
 import Link from 'next/link';
 
 export default async function CasePage() {
@@ -33,7 +30,7 @@ export default async function CasePage() {
     object: caseIdFor(row.id),
   });
 
-  const fresh = await db.query.cases.findFirst({ where: eq(cases.id, row.id) });
+  const fresh = await findCaseById(row.id);
 
   return (
     <main className="mx-auto max-w-2xl p-6">

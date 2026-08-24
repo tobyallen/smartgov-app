@@ -1,7 +1,6 @@
 import { auth0 } from '@/lib/auth0';
-import { db } from '@/lib/db';
-import { auditEvents } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { firestore } from '@/lib/firebase-admin';
+import type { AuditEventRecord } from '@/lib/provisioning';
 
 const LABELS: Record<string, string> = {
   check: 'Access check',
@@ -22,10 +21,26 @@ export default async function AccessLogPage() {
     );
   }
 
-  const events = await db.query.auditEvents.findMany({
-    where: eq(auditEvents.citizenUserId, session.user.sub),
-    orderBy: [desc(auditEvents.createdAt)],
-    limit: 100,
+  const snap = await firestore()
+    .collection('auditEvents')
+    .where('citizenUserId', '==', session.user.sub)
+    .orderBy('createdAt', 'desc')
+    .limit(100)
+    .get();
+  const events: AuditEventRecord[] = snap.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      citizenUserId: data.citizenUserId,
+      eventType: data.eventType,
+      subject: data.subject,
+      relation: data.relation ?? null,
+      object: data.object ?? null,
+      context: data.context ?? null,
+      decision: data.decision ?? null,
+      detail: data.detail ?? null,
+      createdAt: data.createdAt.toDate(),
+    };
   });
 
   return (
