@@ -38,14 +38,9 @@ export type AuditEventRecord = {
 };
 
 export async function findCaseByCitizen(citizenUserId: string): Promise<CaseRecord | undefined> {
-  const snap = await firestore()
-    .collection('cases')
-    .where('citizenUserId', '==', citizenUserId)
-    .limit(1)
-    .get();
-  if (snap.empty) return undefined;
-  const doc = snap.docs[0];
-  const data = doc.data();
+  const doc = await firestore().collection('cases').doc(citizenUserId).get();
+  if (!doc.exists) return undefined;
+  const data = doc.data()!;
   return {
     id: doc.id,
     citizenUserId: data.citizenUserId,
@@ -71,24 +66,25 @@ export async function findCaseById(caseId: string): Promise<CaseRecord | undefin
 /**
  * Runs once per citizen, on first login: creates their mock case + agent
  * identity, and writes the `owner` FGA tuple. Idempotent — safe to call
- * on every login.
+ * on every login, including concurrently from two tabs/devices for the
+ * same brand-new user: both `cases` and `agents` use the citizen's own
+ * uid as the document ID (not an auto-generated one), so a second
+ * concurrent create overwrites the first with equivalent data rather
+ * than racing to insert a duplicate row under a different ID.
  */
 export async function ensureCitizenProvisioned(
   userId: string,
 ): Promise<{ case: CaseRecord; agent: AgentRecord }> {
+  const db = firestore();
   const existingCase = await findCaseByCitizen(userId);
-  if (existingCase) {
-    const agentSnap = await firestore()
-      .collection('agents')
-      .where('citizenUserId', '==', userId)
-      .limit(1)
-      .get();
-    const agentDoc = agentSnap.docs[0];
-    const agentData = agentDoc.data();
+  const existingAgentDoc = await db.collection('agents').doc(userId).get();
+
+  if (existingCase && existingAgentDoc.exists) {
+    const agentData = existingAgentDoc.data()!;
     return {
       case: existingCase,
       agent: {
-        id: agentDoc.id,
+        id: existingAgentDoc.id,
         citizenUserId: agentData.citizenUserId,
         fgaAgentId: agentData.fgaAgentId,
         createdAt: agentData.createdAt.toDate(),
@@ -96,32 +92,54 @@ export async function ensureCitizenProvisioned(
     };
   }
 
-  const db = firestore();
+  // Case exists but the agent doc doesn't (or vice versa) — a prior
+  // provisioning attempt was interrupted partway through. Re-run the
+  // whole thing; every write below is a deterministic-ID set(), so
+  // re-provisioning an already-complete half is a harmless overwrite,
+  // not a duplicate. Each doc keeps its own original createdAt if it
+  // already existed, rather than both being stamped with whichever
+  // timestamp happened to be computed first.
   const now = new Date();
-  // Backdated so the appeal window (720h / 30 days) is open by default for
-  // the live demo; the standalone/self-guided version behaves the same.
-  const caseRef = await db.collection('cases').add({
+  const caseCreatedAt = existingCase?.createdAt ?? now;
+  const agentCreatedAt = existingAgentDoc.exists
+    ? (existingAgentDoc.data()!.createdAt.toDate() as Date)
+    : now;
+
+  await db.collection('cases').doc(userId).set({
     citizenUserId: userId,
-    assessmentTime: now,
-    status: 'open',
-    createdAt: now,
+    assessmentTime: existingCase?.assessmentTime ?? now,
+    status: existingCase?.status ?? 'open',
+    createdAt: caseCreatedAt,
   });
 
   const fgaAgentId = agentIdFor(userId);
-  const agentRef = await db.collection('agents').add({
+  await db.collection('agents').doc(userId).set({
     citizenUserId: userId,
     fgaAgentId,
-    createdAt: now,
+    createdAt: agentCreatedAt,
   });
 
-  await getFgaClient().write({
-    writes: [
-      { user: `user:${userId}`, relation: 'owner', object: caseIdFor(caseRef.id) },
-    ],
-  });
+  // Only write the `owner` tuple if the case doc didn't already exist —
+  // FGA's write API errors on a duplicate tuple rather than no-op'ing,
+  // so re-running this on the "case exists, agent doc was missing"
+  // recovery path must not attempt to rewrite a tuple that's already
+  // there.
+  if (!existingCase) {
+    await getFgaClient().write({
+      writes: [
+        { user: `user:${userId}`, relation: 'owner', object: caseIdFor(userId) },
+      ],
+    });
+  }
 
   return {
-    case: { id: caseRef.id, citizenUserId: userId, assessmentTime: now, status: 'open', createdAt: now },
-    agent: { id: agentRef.id, citizenUserId: userId, fgaAgentId, createdAt: now },
+    case: {
+      id: userId,
+      citizenUserId: userId,
+      assessmentTime: existingCase?.assessmentTime ?? now,
+      status: existingCase?.status ?? 'open',
+      createdAt: caseCreatedAt,
+    },
+    agent: { id: userId, citizenUserId: userId, fgaAgentId, createdAt: agentCreatedAt },
   };
 }

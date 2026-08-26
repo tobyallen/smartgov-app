@@ -18,9 +18,31 @@ export default async function Home() {
           <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
         </div>
       ) : (
-        <a className="mt-6 inline-block rounded bg-blue-600 px-4 py-2 text-sm text-white" href="/auth/login">
-          Sign up / log in
-        </a>
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row">
+          <div>
+            <a
+              className="inline-block rounded bg-blue-600 px-4 py-2 text-sm text-white"
+              href="/auth/login?persona=citizen"
+            >
+              Continue as a citizen
+            </a>
+            <p className="mt-1 max-w-xs text-xs text-gray-500">
+              Sign up for your own case and control what your AI assistant is allowed to see.
+            </p>
+          </div>
+          <div>
+            <a
+              className="inline-block rounded bg-gray-700 px-4 py-2 text-sm text-white"
+              href="/auth/login?persona=caseworker"
+            >
+              Continue as a caseworker
+            </a>
+            <p className="mt-1 max-w-xs text-xs text-gray-500">
+              Sign up with access to the admin tool surface - the same account, checked by a
+              different role.
+            </p>
+          </div>
+        </div>
       )}
     </main>
   );

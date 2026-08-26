@@ -17,8 +17,9 @@ Nothing in this repo is tied to a specific Auth0 tenant, FGA store, or Firebase 
    - Create a Regular Web App for the citizen portal. Note its client ID/secret and set `APP_BASE_URL` to wherever you're running it (e.g. `http://localhost:3000` locally, your Vercel URL in production), then add that as an Allowed Callback/Logout URL.
    - Register a Custom API (resource server) for `APP_API_AUDIENCE`.
    - Create a second, `resource_server`-type client for the OBO token exchange (`OBO_BACKEND_CLIENT_ID`/`SECRET`), with `token_exchange.allow_any_profile_of_type` enabled — this is deliberately not the same client as the citizen portal.
-   - Create a `citizen` Role under User Management → Roles, and note its role ID.
-   - Add the `auth0-actions/assign-citizen-role.js` script as a post-login Action, with an Action Secret named `CITIZEN_ROLE_ID` set to that role's ID (plus the usual `DOMAIN`/`CLIENT_ID`/`CLIENT_SECRET` secrets for a Management API client with `update:users` access).
+   - Create `citizen` and `caseworker` Roles under User Management → Roles, and note both role IDs.
+   - Add `auth0-actions/assign-persona-role.js` and `auth0-actions/provision-citizen-record.js` as post-login Actions, both gated to run once on first login only. `assign-persona-role.js` needs Action Secrets `DOMAIN`/`CLIENT_ID`/`CLIENT_SECRET` (a Management API client with `update:users` access) plus `CITIZEN_ROLE_ID`/`CASEWORKER_ROLE_ID`. `provision-citizen-record.js` needs `PROVISIONING_SYNC_URL` (your deployed app's `/api/provisioning/sync` URL) and `PROVISIONING_SYNC_SECRET` (matching the app's own env var of the same name). Both Actions read the persona the visitor chose on the landing page (`?persona=citizen`/`?persona=caseworker` on `/auth/login`, forwarded to `/authorize` and read from `event.request.query.persona`) — deliberately on `post-login`, not `post-user-registration`, since only `post-login` is synchronous/blocking with a full `api` object; `post-user-registration` is documented as asynchronous and can't reliably finish before the signup redirect completes.
+   - Via the [Auth0 CLI](https://github.com/auth0/auth0-cli): `auth0 roles create --name citizen`, `auth0 roles create --name caseworker`, then `auth0 actions create --name "Assign Persona Role" --trigger post-login --code "$(cat auth0-actions/assign-persona-role.js)" --dependency "auth0=4.37.1" --secret "CITIZEN_ROLE_ID=<id>" --secret "CASEWORKER_ROLE_ID=<id>" --secret "DOMAIN=<your-domain>" --secret "CLIENT_ID=<mgmt-client-id>" --secret "CLIENT_SECRET=<mgmt-client-secret>"` (repeat similarly for `provision-citizen-record.js`), then deploy and bind each via `auth0 actions deploy <id>` and attaching them to the Login flow.
 
 2. **Auth0 FGA** — create a store at [dashboard.fga.dev](https://dashboard.fga.dev), write the model from `fga-model.fga`, and create an API client for it. Note the store ID, model ID, and client credentials.
 
@@ -37,8 +38,9 @@ Nothing in this repo is tied to a specific Auth0 tenant, FGA store, or Firebase 
 
 ## Repo layout
 
-- `src/app/` — routes: citizen chat (`chat`), case view (`case`), delegation controls (`api/delegation`), the MCP server (`api/mcp`), the Auth0↔Firestore identity bridge (`api/firebase-token`), and an access log (`access-log`)
+- `src/app/` — routes: citizen chat (`chat`), case view (`case`), delegation controls (`api/delegation`), the MCP server (`api/mcp`), the Auth0↔Firestore identity bridge (`api/firebase-token`), the synchronous first-login provisioning endpoint (`api/provisioning/sync`), and an access log (`access-log`)
 - `fga-model.fga` — the Auth0 FGA authorisation model
-- `auth0-actions/` — Auth0 Action source, deployed manually via the dashboard (not automated by this repo)
+- `auth0-actions/` — Auth0 Action source (deployable via the `auth0` CLI — see setup step 1 — or pasted into the dashboard)
 - `firestore.rules` — Firestore security rules for `cases`, `agents`, `auditEvents`
 - `src/lib/provisioning.ts`, `src/lib/firebase-admin.ts` — Firestore data access
+- `src/lib/roles.ts` — reads the `citizen`/`caseworker` persona claim the Actions set on the ID token; this is the app's only RBAC mechanism

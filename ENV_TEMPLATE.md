@@ -52,6 +52,12 @@ FIREBASE_PRIVATE_KEY="<the "private_key" field from the service account JSON, in
 # Vercel AI Gateway
 AI_GATEWAY_API_KEY=<your Vercel AI Gateway key>
 AI_GATEWAY_MODEL=amazon/nova-pro
+
+# Provisioning sync — checked by /api/provisioning/sync against the
+# x-provisioning-secret header the auth0-actions/provision-citizen-record.js
+# Action sends. Must match the PROVISIONING_SYNC_SECRET Action Secret
+# exactly. Generate with: openssl rand -hex 32.
+PROVISIONING_SYNC_SECRET=<generate via: openssl rand -hex 32>
 ```
 
 ## A note on secrets
