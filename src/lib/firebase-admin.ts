@@ -1,6 +1,5 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 
 // Constructed lazily, same reason as getFgaClient() in fga.ts: initializeApp
 // validates its config eagerly, which would throw during `next build`'s
@@ -29,6 +28,14 @@ export function firestore() {
   return getFirestore(adminApp());
 }
 
-export function firebaseAuth() {
+// Dynamic import, not static - firebase-admin/auth transitively pulls in
+// jwks-rsa, which does a CJS require() of jose's ESM build. That's a
+// real ERR_REQUIRE_ESM crash under this Next.js/Turbopack bundler, and
+// it fires at module-load time for every route that imports this file,
+// even ones that only need firestore() and never call firebaseAuth().
+// A dynamic import defers loading the broken submodule until a route
+// that actually needs it (only /api/firebase-token does) calls this.
+export async function firebaseAuth() {
+  const { getAuth } = await import('firebase-admin/auth');
   return getAuth(adminApp());
 }

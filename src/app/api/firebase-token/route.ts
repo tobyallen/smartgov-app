@@ -21,6 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const customToken = await firebaseAuth().createCustomToken(session.user.sub);
+  const auth = await firebaseAuth();
+  const customToken = await auth.createCustomToken(session.user.sub);
   return NextResponse.json({ customToken });
 }
