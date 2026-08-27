@@ -31,12 +31,17 @@ export default function ChatPage() {
   const [togglePending, setTogglePending] = useState(false);
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
+    onFinish: () => refreshDelegation(),
   });
 
-  useEffect(() => {
-    fetch('/api/delegation')
+  function refreshDelegation() {
+    return fetch('/api/delegation')
       .then((r) => r.json())
       .then((data) => setDelegated(Boolean(data.granted)));
+  }
+
+  useEffect(() => {
+    refreshDelegation();
   }, []);
 
   async function toggleDelegation() {
@@ -47,7 +52,11 @@ export default function ChatPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ granted: next }),
     });
-    if (res.ok) setDelegated(next);
+    // Re-read actual server/FGA state rather than trusting the request we
+    // just sent succeeded — a prior bug had this button show "Delegated"
+    // purely from optimistic local state while a real check on the same
+    // tuple came back denied, because nothing ever reconciled the two.
+    if (res.ok) await refreshDelegation();
     setTogglePending(false);
   }
 
