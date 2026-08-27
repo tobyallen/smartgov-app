@@ -50,12 +50,18 @@ export default async function CasePage() {
         </div>
       </dl>
       <div className="mt-6 flex gap-4 text-sm">
+        <Link className="text-blue-600 underline" href="/">
+          Home
+        </Link>
         <Link className="text-blue-600 underline" href="/chat">
           Talk to your assistant
         </Link>
         <Link className="text-blue-600 underline" href="/access-log">
           View access log
         </Link>
+        <a className="text-blue-600 underline" href="/auth/logout">
+          Log out
+        </a>
       </div>
     </main>
   );

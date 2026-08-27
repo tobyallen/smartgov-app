@@ -62,6 +62,13 @@ export default function ChatPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
+      <div className="mb-4 flex gap-4 text-sm">
+        <a className="text-blue-600 underline" href="/">Home</a>
+        <a className="text-blue-600 underline" href="/case">My case</a>
+        <a className="text-blue-600 underline" href="/access-log">Access log</a>
+        <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
+      </div>
+
       <div className="mb-4 flex items-center justify-between rounded border p-3">
         <div>
           <div className="font-medium">Allow my AI assistant to access this case</div>
