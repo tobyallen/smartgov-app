@@ -24,8 +24,15 @@ function adminApp(): App {
   return _app;
 }
 
+// The explicit 'default' databaseId is required, not cosmetic - calling
+// getFirestore(adminApp()) with no second argument resolves to the SDK's
+// internal '(default)' alias, which returned a bare "5 NOT_FOUND" against
+// this project's actual database even though the database genuinely
+// exists and this service account has full read/write access to it
+// (confirmed directly against the Firestore REST API). Naming the
+// database explicitly is the fix.
 export function firestore() {
-  return getFirestore(adminApp());
+  return getFirestore(adminApp(), 'default');
 }
 
 // Dynamic import, not static - firebase-admin/auth transitively pulls in
