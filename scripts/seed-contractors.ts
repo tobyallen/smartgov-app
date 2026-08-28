@@ -37,9 +37,12 @@ async function main() {
     console.log(`Firestore: contractor:${contractor.id} — ${contractor.name}`);
   }
 
+  // object needs a type even without a specific id — the read API rejects
+  // a tuple_key that only has user+relation (no object type at all).
   const { tuples } = await fga.read({
     user: `user:${caseworkerUserId}`,
     relation: 'caseworker_managed',
+    object: 'contractor:',
   });
   const alreadyGranted = new Set(tuples.map((t) => t.key.object));
 
