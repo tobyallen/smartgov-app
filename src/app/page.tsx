@@ -1,4 +1,5 @@
 import { auth0 } from '@/lib/auth0';
+import { isCaseworker } from '@/lib/roles';
 
 export default async function Home() {
   const session = await auth0.getSession();
@@ -15,6 +16,9 @@ export default async function Home() {
           <a className="text-blue-600 underline" href="/case">My case</a>
           <a className="text-blue-600 underline" href="/chat">Chat with my assistant</a>
           <a className="text-blue-600 underline" href="/access-log">Access log</a>
+          {isCaseworker(session.user) && (
+            <a className="text-blue-600 underline" href="/admin">Admin console</a>
+          )}
           <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
         </div>
       ) : (

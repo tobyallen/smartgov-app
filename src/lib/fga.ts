@@ -159,6 +159,39 @@ export async function checkAppealWindow({
   });
 }
 
+/**
+ * The bulk_disable_contractors boundary: caseworker_can_bulk_disable must
+ * be granted AND that grant's step_up_approved condition must still be
+ * live. approvedAt comes from the caseworker's own `stepUpApprovals`
+ * Firestore doc (written by /api/request-step-up), never from the
+ * caller's own request — mirrors checkAppealWindow's pattern exactly:
+ * FGA only evaluates the condition against what's supplied here.
+ */
+export async function checkStepUpBulkDisable({
+  caseworkerUserId,
+  contractorId,
+  approvedAt,
+}: {
+  caseworkerUserId: string;
+  contractorId: string;
+  approvedAt: Date;
+}): Promise<boolean> {
+  return checkAndLog({
+    // checkAndLog's field is named citizenUserId (this audit log started
+    // citizen-only), but it's really just "whose event this is" —
+    // /access-log scopes by it regardless of persona, so a caseworker's
+    // own uid belongs in the same field, not a citizen's.
+    citizenUserId: caseworkerUserId,
+    subject: `user:${caseworkerUserId}`,
+    relation: 'caseworker_can_bulk_disable',
+    object: `contractor:${contractorId}`,
+    context: {
+      approved_at: approvedAt.toISOString(),
+      current_time: new Date().toISOString(),
+    },
+  });
+}
+
 /** Logs the OBO token-exchange step itself (distinct from the FGA checks either side of it). */
 export async function logOboExchange({
   citizenUserId,

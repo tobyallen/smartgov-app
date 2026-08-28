@@ -1,6 +1,8 @@
 import { auth0 } from '@/lib/auth0';
 import { firestore } from '@/lib/firebase-admin';
+import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
+import Link from 'next/link';
 
 const LABELS: Record<string, string> = {
   check: 'Access check',
@@ -46,9 +48,12 @@ export default async function AccessLogPage() {
   return (
     <main className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex gap-4 text-sm">
-        <a className="text-blue-600 underline" href="/">Home</a>
-        <a className="text-blue-600 underline" href="/case">My case</a>
-        <a className="text-blue-600 underline" href="/chat">Chat</a>
+        <Link className="text-blue-600 underline" href="/">Home</Link>
+        <Link className="text-blue-600 underline" href="/case">My case</Link>
+        <Link className="text-blue-600 underline" href="/chat">Chat</Link>
+        {isCaseworker(session.user) && (
+          <Link className="text-blue-600 underline" href="/admin">Admin console</Link>
+        )}
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
       <h1 className="text-xl font-semibold">Your access log</h1>

@@ -1,6 +1,7 @@
 import { auth0 } from '@/lib/auth0';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
+import { isCaseworker } from '@/lib/roles';
 import Link from 'next/link';
 
 export default async function CasePage() {
@@ -59,6 +60,11 @@ export default async function CasePage() {
         <Link className="text-blue-600 underline" href="/access-log">
           View access log
         </Link>
+        {isCaseworker(session.user) && (
+          <Link className="text-blue-600 underline" href="/admin">
+            Admin console
+          </Link>
+        )}
         <a className="text-blue-600 underline" href="/auth/logout">
           Log out
         </a>

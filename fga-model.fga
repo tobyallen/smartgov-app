@@ -25,3 +25,21 @@ type case
 condition appeal_window(current_time: timestamp, assessment_time: timestamp) {
   current_time < assessment_time + duration("720h")
 }
+
+# The MCP vignette's admin surface: a separate type from `case`, because
+# contractor management is a distinct resource with its own grant, not a
+# citizen-owned document. Two relations on the same object, same seeding
+# action — mirroring case's owner/agent_delegate/agent_can_submit_appeal
+# split above. `caseworker_managed` is the plain, unconditional grant
+# (list/single-disable); `caseworker_can_bulk_disable` additionally
+# requires a fresh, server-asserted step-up approval, checked at call time
+# via the step_up_approved condition — never a flag the caller supplies
+# about itself (see /api/request-step-up).
+type contractor
+  relations
+    define caseworker_managed: [user]
+    define caseworker_can_bulk_disable: [user with step_up_approved]
+
+condition step_up_approved(approved_at: timestamp, current_time: timestamp) {
+  current_time < approved_at + duration("5m")
+}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import Link from 'next/link';
 
 type TraceEvent = { kind: 'fga_check' | 'obo_exchange'; label: string; allowed?: boolean };
 
@@ -63,9 +64,9 @@ export default function ChatPage() {
   return (
     <main className="mx-auto max-w-2xl p-4">
       <div className="mb-4 flex gap-4 text-sm">
-        <a className="text-blue-600 underline" href="/">Home</a>
-        <a className="text-blue-600 underline" href="/case">My case</a>
-        <a className="text-blue-600 underline" href="/access-log">Access log</a>
+        <Link className="text-blue-600 underline" href="/">Home</Link>
+        <Link className="text-blue-600 underline" href="/case">My case</Link>
+        <Link className="text-blue-600 underline" href="/access-log">Access log</Link>
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
 
