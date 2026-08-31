@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { streamText, tool, type UIMessage, convertToModelMessages } from 'ai';
+import { streamText, tool, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { auth0 } from '@/lib/auth0';
 import { chatModel } from '@/lib/ai';
@@ -27,12 +27,19 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: chatModel(),
+    // See src/app/api/chat/route.ts for why this is required — without
+    // it, a tool call's result never gets fed back for a follow-up
+    // response, so e.g. "list the contractors" calls list_contractors
+    // and then the reply just stops with no answer.
+    stopWhen: stepCountIs(5),
     system:
       'You are a caseworker assistant for the SmartGov admin console. ' +
       'You can list contractors, disable one contractor at a time, or bulk-disable ' +
       'several at once. Bulk actions require a fresh step-up approval — if bulk_disable_contractors ' +
       'reports denied ids, tell the caseworker plainly that step-up is missing or expired, ' +
-      'not that something is broken.',
+      'not that something is broken. ' +
+      'Do not include <thinking> tags or any other visible reasoning in your response — ' +
+      'respond only with your final answer to the user.',
     messages: await convertToModelMessages(messages),
     tools: {
       list_contractors: tool({
