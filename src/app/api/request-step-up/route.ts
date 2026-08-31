@@ -13,7 +13,7 @@ import { firestore } from '@/lib/firebase-admin';
  */
 export async function POST() {
   const session = await auth0.getSession();
-  if (!session || !isCaseworker(session.user)) {
+  if (!session || !isCaseworker(session)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -16,7 +16,7 @@ export default async function Home() {
           <a className="text-blue-600 underline" href="/case">My case</a>
           <a className="text-blue-600 underline" href="/chat">Chat with my assistant</a>
           <a className="text-blue-600 underline" href="/access-log">Access log</a>
-          {isCaseworker(session.user) && (
+          {isCaseworker(session) && (
             <a className="text-blue-600 underline" href="/admin">Admin console</a>
           )}
           <a className="text-blue-600 underline" href="/auth/logout">Log out</a>

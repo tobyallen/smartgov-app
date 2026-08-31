@@ -18,7 +18,7 @@ export default async function AdminPage() {
     );
   }
 
-  if (!isCaseworker(session.user)) {
+  if (!isCaseworker(session)) {
     return (
       <main className="mx-auto max-w-2xl p-6">
         <div className="mb-4 flex gap-4 text-sm">

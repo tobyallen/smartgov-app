@@ -60,7 +60,7 @@ function buildServer(caseworkerUserId: string) {
 export async function POST(request: NextRequest) {
   const session = await auth0.getSession();
   if (!session) return new Response('Unauthorized', { status: 401 });
-  if (!isCaseworker(session.user)) {
+  if (!isCaseworker(session)) {
     return new Response('Forbidden — caseworker role required', { status: 403 });
   }
 

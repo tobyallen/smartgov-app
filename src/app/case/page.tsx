@@ -60,7 +60,7 @@ export default async function CasePage() {
         <Link className="text-blue-600 underline" href="/access-log">
           View access log
         </Link>
-        {isCaseworker(session.user) && (
+        {isCaseworker(session) && (
           <Link className="text-blue-600 underline" href="/admin">
             Admin console
           </Link>
