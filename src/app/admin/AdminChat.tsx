@@ -81,7 +81,9 @@ export default function AdminChat() {
               <div className={message.role === 'user' ? 'text-right' : ''}>
                 <div
                   className={`inline-block rounded px-3 py-2 text-sm ${
-                    message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100'
+                    message.role === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
                   }`}
                 >
                   {message.parts.map((part, i) =>
