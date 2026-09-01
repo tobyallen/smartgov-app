@@ -51,6 +51,7 @@ export default async function AccessLogPage() {
         <Link className="text-blue-600 underline" href="/">Home</Link>
         <Link className="text-blue-600 underline" href="/case">My case</Link>
         <Link className="text-blue-600 underline" href="/chat">Chat</Link>
+        <Link className="text-blue-600 underline" href="/recap">What you just saw</Link>
         {isCaseworker(session) && (
           <Link className="text-blue-600 underline" href="/admin">Admin console</Link>
         )}

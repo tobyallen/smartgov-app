@@ -70,6 +70,13 @@ export default function ChatPage() {
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
 
+      <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+        Your assistant doesn&apos;t automatically inherit your access to your own data - it&apos;s
+        a separate identity, and until you grant it a scoped permission below, every request it
+        makes on your behalf will be denied. You can revoke that permission at any time, and the
+        very next request will reflect it immediately.
+      </p>
+
       <div className="mb-4 flex items-center justify-between rounded border p-3">
         <div>
           <div className="font-medium">Allow my AI assistant to access this case</div>
@@ -77,13 +84,27 @@ export default function ChatPage() {
             You can always see your own case — this only controls what your assistant can see.
           </div>
         </div>
-        <button
-          onClick={toggleDelegation}
-          disabled={togglePending || status !== 'ready'}
-          className={`rounded px-3 py-1 text-sm ${delegated ? 'bg-green-600 text-white' : 'bg-gray-200'}`}
-        >
-          {togglePending ? '...' : delegated ? 'Delegated' : 'Not delegated'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => !delegated && toggleDelegation()}
+            disabled={togglePending || status !== 'ready' || delegated}
+            className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-40"
+          >
+            Grant delegation
+          </button>
+          <button
+            onClick={() => delegated && toggleDelegation()}
+            disabled={togglePending || status !== 'ready' || !delegated}
+            className="rounded bg-gray-700 px-3 py-1 text-sm text-white disabled:opacity-40"
+          >
+            Revoke delegation
+          </button>
+          <span
+            className={`rounded px-3 py-1 text-sm ${delegated ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}
+          >
+            {togglePending ? '...' : delegated ? 'Delegated' : 'Not delegated'}
+          </span>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -111,8 +132,16 @@ export default function ChatPage() {
         })}
       </div>
 
+      <button
+        onClick={() => sendMessage({ text: 'Ask for my case summary' })}
+        disabled={status !== 'ready'}
+        className="mt-4 rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+      >
+        Ask for my case summary
+      </button>
+
       <form
-        className="mt-4 flex gap-2"
+        className="mt-2 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
