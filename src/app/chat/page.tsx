@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
+import OneTimeNote from '@/components/OneTimeNote';
 
 type TraceEvent = { kind: 'fga_check' | 'obo_exchange'; label: string; allowed?: boolean };
 
@@ -70,12 +71,14 @@ export default function ChatPage() {
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
 
-      <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-        Your assistant doesn&apos;t automatically inherit your access to your own data - it&apos;s
-        a separate identity, and until you grant it a scoped permission below, every request it
-        makes on your behalf will be denied. You can revoke that permission at any time, and the
-        very next request will reflect it immediately.
-      </p>
+      <OneTimeNote step="chat-delegation-explainer-seen">
+        <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+          Your assistant doesn&apos;t automatically inherit your access to your own data -
+          it&apos;s a separate identity, and until you grant it a scoped permission below, every
+          request it makes on your behalf will be denied. You can revoke that permission at any
+          time, and the very next request will reflect it immediately.
+        </p>
+      </OneTimeNote>
 
       <div className="mb-4 flex items-center justify-between rounded border p-3">
         <div>

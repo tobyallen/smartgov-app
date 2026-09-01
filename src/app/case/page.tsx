@@ -2,6 +2,7 @@ import { auth0 } from '@/lib/auth0';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
 import { isCaseworker } from '@/lib/roles';
+import OneTimeNote from '@/components/OneTimeNote';
 import Link from 'next/link';
 
 // Pulled out of the component body so the render function itself stays
@@ -52,13 +53,13 @@ export default async function CasePage() {
   return (
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="text-xl font-semibold">Your case</h1>
-      {justProvisioned && (
+      <OneTimeNote step="case-provisioning-note-seen" initiallyEligible={justProvisioned}>
         <p className="mt-2 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100">
           While you were signing up, this app set up your case record and granted your AI
           assistant&apos;s starting permissions - the same kind of check every request it makes
           will go through from now on.
         </p>
-      )}
+      </OneTimeNote>
       <dl className="mt-4 space-y-2 text-sm">
         <div>
           <dt className="text-gray-500">Case ID</dt>
@@ -74,19 +75,21 @@ export default async function CasePage() {
         </div>
       </dl>
 
-      <p className="mt-6 text-sm text-gray-700 dark:text-gray-300">
-        Every time your assistant answers a question about this case, it makes a real API call
-        that&apos;s checked against{' '}
-        <a
-          className="text-blue-600 underline"
-          href="https://auth0.com/docs/secure/fine-grained-authorization"
-        >
-          Auth0 FGA
-        </a>{' '}
-        (fine-grained authorisation) - a system that decides, fresh on every single request,
-        exactly what your assistant is allowed to see. There&apos;s no insecure version of this
-        app to show you first, because nothing here ever skips that check.
-      </p>
+      <OneTimeNote step="case-fga-explainer-seen">
+        <p className="mt-6 text-sm text-gray-700 dark:text-gray-300">
+          Every time your assistant answers a question about this case, it makes a real API call
+          that&apos;s checked against{' '}
+          <a
+            className="text-blue-600 underline"
+            href="https://auth0.com/docs/secure/fine-grained-authorization"
+          >
+            Auth0 FGA
+          </a>{' '}
+          (fine-grained authorisation) - a system that decides, fresh on every single request,
+          exactly what your assistant is allowed to see. There&apos;s no insecure version of this
+          app to show you first, because nothing here ever skips that check.
+        </p>
+      </OneTimeNote>
 
       <details className="mt-3 rounded border p-3 text-sm">
         <summary className="cursor-pointer font-medium">

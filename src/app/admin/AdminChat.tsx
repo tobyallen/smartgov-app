@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
+import OneTimeNote from '@/components/OneTimeNote';
 
 type TraceEvent = { kind: 'fga_check' | 'obo_exchange'; label: string; allowed?: boolean };
 
@@ -52,21 +53,25 @@ export default function AdminChat() {
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
 
-      <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-        This console is reachable by every visitor - but what you can do here depends on two
-        separate checks. Your <strong>role</strong> (citizen vs. caseworker) decides which tools
-        even exist for you; a citizen wouldn&apos;t see contractor management tools listed at
-        all. <a className="text-blue-600 underline" href="https://auth0.com/docs/secure/fine-grained-authorization">Auth0 FGA</a>{' '}
-        then decides, for a caseworker who does have the tools, which specific contractor record
-        they can act on, and whether a riskier action needs a fresh approval first.
-      </p>
+      <OneTimeNote step="admin-rbac-explainer-seen">
+        <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+          This console is reachable by every visitor - but what you can do here depends on two
+          separate checks. Your <strong>role</strong> (citizen vs. caseworker) decides which tools
+          even exist for you; a citizen wouldn&apos;t see contractor management tools listed at
+          all. <a className="text-blue-600 underline" href="https://auth0.com/docs/secure/fine-grained-authorization">Auth0 FGA</a>{' '}
+          then decides, for a caseworker who does have the tools, which specific contractor
+          record they can act on, and whether a riskier action needs a fresh approval first.
+        </p>
+      </OneTimeNote>
 
-      <p className="mb-4 text-xs text-gray-500">
-        This chatbot is itself an{' '}
-        <a className="underline" href="https://modelcontextprotocol.io/">MCP</a> client - the
-        same tools you can trigger by typing below are also exposed as a real,
-        independently-callable MCP server at <code>/api/admin-mcp</code>.
-      </p>
+      <OneTimeNote step="admin-mcp-explainer-seen">
+        <p className="mb-4 text-xs text-gray-500">
+          This chatbot is itself an{' '}
+          <a className="underline" href="https://modelcontextprotocol.io/">MCP</a> client - the
+          same tools you can trigger by typing below are also exposed as a real,
+          independently-callable MCP server at <code>/api/admin-mcp</code>.
+        </p>
+      </OneTimeNote>
 
       <div className="mb-4 flex items-center justify-between rounded border p-3">
         <div>
