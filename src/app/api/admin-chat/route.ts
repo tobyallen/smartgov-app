@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { auth0 } from '@/lib/auth0';
 import { chatModel } from '@/lib/ai';
 import { isCaseworker } from '@/lib/roles';
-import { listContractors, disableContractor, bulkDisableContractors } from '@/lib/adminTools';
+import { connectToMcpServer } from '@/lib/mcpClient';
 import type { TraceEvent } from '@/lib/tools';
 
 // RBAC gate: a citizen session never gets a tools map with
@@ -12,6 +12,10 @@ import type { TraceEvent } from '@/lib/tools';
 // shown these tools exist, matching admin-mcp's list_tools filtering.
 // Every handler also re-checks FGA itself regardless of this gate; the
 // two layers are independent, not one shortcutting the other.
+//
+// A real MCP client, same as /api/chat: every tool call goes through an
+// OBO exchange (caseworker's access token -> MCP_API_AUDIENCE) and a
+// genuine HTTP request to /api/admin-mcp - see lib/mcpClient.ts.
 export async function POST(request: NextRequest) {
   const session = await auth0.getSession();
   if (!session) return new Response('Unauthorized', { status: 401 });
@@ -20,10 +24,30 @@ export async function POST(request: NextRequest) {
   }
 
   const caseworkerUserId = session.user.sub;
+  const { token } = await auth0.getAccessToken();
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const traceEvents: TraceEvent[] = [];
   const trace = (event: TraceEvent) => traceEvents.push(event);
+
+  const mcpClient = await connectToMcpServer({
+    userId: caseworkerUserId,
+    accessToken: token,
+    mcpPath: '/api/admin-mcp',
+  });
+  trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+
+  async function callMcpTool(name: string, args: Record<string, unknown> = {}) {
+    const response = await mcpClient.callTool({ name, arguments: args });
+    const content = response.content as Array<{ type: string; text?: string }>;
+    const raw = content[0]?.text ?? '{}';
+    const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
+      result: unknown;
+      traceEvents: TraceEvent[];
+    };
+    for (const event of toolTraceEvents) trace(event);
+    return result;
+  }
 
   const result = streamText({
     model: chatModel(),
@@ -45,13 +69,12 @@ export async function POST(request: NextRequest) {
       list_contractors: tool({
         description: 'List all contractors and their current status.',
         inputSchema: z.object({}),
-        execute: async () => listContractors({ caseworkerUserId, trace }),
+        execute: async () => callMcpTool('list_contractors'),
       }),
       disable_contractor: tool({
         description: 'Disable a single contractor by id.',
         inputSchema: z.object({ contractorId: z.string() }),
-        execute: async ({ contractorId }) =>
-          disableContractor({ caseworkerUserId, trace }, contractorId),
+        execute: async ({ contractorId }) => callMcpTool('disable_contractor', { contractorId }),
       }),
       bulk_disable_contractors: tool({
         description:
@@ -59,7 +82,7 @@ export async function POST(request: NextRequest) {
           'call request_step_up first if this reports denied ids.',
         inputSchema: z.object({ contractorIds: z.array(z.string()) }),
         execute: async ({ contractorIds }) =>
-          bulkDisableContractors({ caseworkerUserId, trace }, contractorIds),
+          callMcpTool('bulk_disable_contractors', { contractorIds }),
       }),
     },
     onFinish: async () => {

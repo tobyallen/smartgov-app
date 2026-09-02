@@ -12,29 +12,33 @@ import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
 function buildServer(citizenUserId: string, citizenAccessToken: string) {
   const server = new McpServer({ name: 'smartgov-case-mcp', version: '1.0.0' });
 
-  const trace = (event: TraceEvent) => {
-    // MCP-client callers don't get the chat trace-card UI, but every
-    // check still lands in the shared audit_events table regardless of
-    // which surface called the tool.
-    void event;
-  };
+  // Every check still lands in the shared auditEvents table regardless of
+  // caller (that's unconditional, inside checkAndLog/logOboExchange
+  // themselves). Collecting trace events per-call here is ADDITIONALLY
+  // how the chat backend (now a real MCP client, calling over HTTP rather
+  // than in-process) gets its trace-card UI back - riding along in the
+  // tool result payload, since a callback can't cross the network hop.
+  // An independent external MCP client gets the same payload and can
+  // ignore this field if it doesn't care.
+  function withTrace<T>(fn: (trace: (e: TraceEvent) => void) => Promise<T>) {
+    const traceEvents: TraceEvent[] = [];
+    return fn((e) => traceEvents.push(e)).then((result) => ({
+      content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
+    }));
+  }
 
   server.registerTool(
     'check_case_status',
     { description: "Check the status of the caller's own case." },
-    async () => {
-      const result = await checkCaseStatus({ citizenUserId, citizenAccessToken, trace });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-    },
+    async () =>
+      withTrace((trace) => checkCaseStatus({ citizenUserId, citizenAccessToken, trace })),
   );
 
   server.registerTool(
     'submit_appeal',
     { description: "Submit a formal appeal for the caller's own case." },
-    async () => {
-      const result = await submitAppeal({ citizenUserId, citizenAccessToken, trace });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-    },
+    async () =>
+      withTrace((trace) => submitAppeal({ citizenUserId, citizenAccessToken, trace })),
   );
 
   return server;

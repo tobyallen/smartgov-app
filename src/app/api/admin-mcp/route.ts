@@ -15,17 +15,21 @@ import type { TraceEvent } from '@/lib/tools';
 function buildServer(caseworkerUserId: string) {
   const server = new McpServer({ name: 'smartgov-admin-mcp', version: '1.0.0' });
 
-  const trace = (event: TraceEvent) => {
-    void event; // persisted individually by checkAndLog/checkStepUpBulkDisable
-  };
+  // Persisted individually by checkAndLog/checkStepUpBulkDisable
+  // regardless; collected here ADDITIONALLY so the admin-chat backend
+  // (a real MCP client, calling over HTTP) can render trace cards from
+  // the tool result payload - a callback can't cross the network hop.
+  function withTrace<T>(fn: (trace: (e: TraceEvent) => void) => Promise<T>) {
+    const traceEvents: TraceEvent[] = [];
+    return fn((e) => traceEvents.push(e)).then((result) => ({
+      content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
+    }));
+  }
 
   server.registerTool(
     'list_contractors',
     { description: 'List all contractors and their current status.' },
-    async () => {
-      const result = await listContractors({ caseworkerUserId, trace });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-    },
+    async () => withTrace((trace) => listContractors({ caseworkerUserId, trace })),
   );
 
   server.registerTool(
@@ -34,10 +38,8 @@ function buildServer(caseworkerUserId: string) {
       description: 'Disable a single contractor by id.',
       inputSchema: { contractorId: z.string() },
     },
-    async ({ contractorId }) => {
-      const result = await disableContractor({ caseworkerUserId, trace }, contractorId);
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-    },
+    async ({ contractorId }) =>
+      withTrace((trace) => disableContractor({ caseworkerUserId, trace }, contractorId)),
   );
 
   server.registerTool(
@@ -47,10 +49,8 @@ function buildServer(caseworkerUserId: string) {
         'Disable multiple contractors at once. Requires a fresh step-up approval via /api/request-step-up.',
       inputSchema: { contractorIds: z.array(z.string()) },
     },
-    async ({ contractorIds }) => {
-      const result = await bulkDisableContractors({ caseworkerUserId, trace }, contractorIds);
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-    },
+    async ({ contractorIds }) =>
+      withTrace((trace) => bulkDisableContractors({ caseworkerUserId, trace }, contractorIds)),
   );
 
   return server;

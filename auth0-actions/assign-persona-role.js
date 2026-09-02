@@ -96,7 +96,17 @@ exports.onExecutePostLogin = async (event, api) => {
   // for a custom API audience, so this is safe to call unconditionally.
   api.accessToken.setCustomClaim('https://smartgov.apidays/persona', persona);
 
-  if (persona === 'caseworker') {
+  // This Action's post-login trigger also fires on every OBO token
+  // exchange (event.transaction.protocol === 'oauth2-token-exchange'),
+  // not just interactive logins - confirmed against Auth0's own docs
+  // before assuming otherwise. Re-deriving/re-setting the persona claim
+  // above is correct and cheap either way, but re-seeding contractor FGA
+  // grants on every single exchange (i.e. every MCP tool call once the
+  // chat backend starts OBO-exchanging per turn) would be real, avoidable
+  // per-request latency for a no-op write. Skip it specifically for
+  // exchanges; logins alone are enough to keep it self-healing.
+  const isTokenExchange = event.transaction?.protocol === 'oauth2-token-exchange';
+  if (persona === 'caseworker' && !isTokenExchange) {
     try {
       await fetch(event.secrets.SEED_CONTRACTORS_URL, {
         method: 'POST',

@@ -3,14 +3,19 @@ import { streamText, tool, stepCountIs, type UIMessage, convertToModelMessages }
 import { z } from 'zod';
 import { auth0 } from '@/lib/auth0';
 import { chatModel } from '@/lib/ai';
-import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
+import { connectToMcpServer } from '@/lib/mcpClient';
+import type { TraceEvent } from '@/lib/tools';
 
-// The hot path every attendee uses: wires the SAME tool handlers as
-// /api/mcp directly into the AI SDK's tool-calling, rather than having
-// the chat backend loop back over HTTP to its own MCP endpoint. That
-// self-hop would add latency and fan-out for no narrative benefit — the
-// MCP requirement is satisfied by /api/mcp being a real, independently
-// callable server, not by forcing every chat turn through it too.
+// A real MCP client, not a caller of the same in-process handlers
+// /api/mcp happens to also expose: every tool call here goes through an
+// OBO exchange (the citizen's own access token -> a token scoped to
+// MCP_API_AUDIENCE, see lib/mcpClient.ts / lib/obo.ts) and a genuine HTTP
+// request to /api/mcp, Bearer-authenticated with the exchanged token and
+// validated there exactly as any independent external MCP client's
+// request would be. This reverses an earlier "no self-hop, same handlers
+// either way" design - that reasoning held until OBO became a
+// requirement for this specific hop, at which point there needed to be
+// an actual second party to hop to for the exchange to mean anything.
 export async function POST(request: NextRequest) {
   const session = await auth0.getSession();
   if (!session) return new Response('Unauthorized', { status: 401 });
@@ -21,6 +26,25 @@ export async function POST(request: NextRequest) {
 
   const traceEvents: TraceEvent[] = [];
   const trace = (event: TraceEvent) => traceEvents.push(event);
+
+  // One exchange, one connection, reused for every tool call this turn -
+  // not re-exchanged per call. The exchange itself is the OBO event this
+  // turn demonstrates; connecting once and calling multiple tools on the
+  // same connection doesn't need a fresh token per call.
+  const mcpClient = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
+  trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+
+  async function callMcpTool(name: string, args: Record<string, unknown> = {}) {
+    const response = await mcpClient.callTool({ name, arguments: args });
+    const content = response.content as Array<{ type: string; text?: string }>;
+    const raw = content[0]?.text ?? '{}';
+    const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
+      result: unknown;
+      traceEvents: TraceEvent[];
+    };
+    for (const event of toolTraceEvents) trace(event);
+    return result;
+  }
 
   const result = streamText({
     model: chatModel(),
@@ -47,12 +71,12 @@ export async function POST(request: NextRequest) {
       check_case_status: tool({
         description: "Check the status of the caller's own case.",
         inputSchema: z.object({}),
-        execute: async () => checkCaseStatus({ citizenUserId, citizenAccessToken: token, trace }),
+        execute: async () => callMcpTool('check_case_status'),
       }),
       submit_appeal: tool({
         description: "Submit a formal appeal for the caller's own case.",
         inputSchema: z.object({}),
-        execute: async () => submitAppeal({ citizenUserId, citizenAccessToken: token, trace }),
+        execute: async () => callMcpTool('submit_appeal'),
       }),
     },
     onFinish: async () => {
