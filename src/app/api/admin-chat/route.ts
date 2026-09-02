@@ -30,23 +30,40 @@ export async function POST(request: NextRequest) {
   const traceEvents: TraceEvent[] = [];
   const trace = (event: TraceEvent) => traceEvents.push(event);
 
-  const mcpClient = await connectToMcpServer({
-    userId: caseworkerUserId,
-    accessToken: token,
-    mcpPath: '/api/admin-mcp',
-  });
-  trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+  // See src/app/api/chat/route.ts for why this can't be allowed to throw
+  // unhandled - a failed exchange/connection used to crash the whole
+  // request into a bare 500 with no explanation at all.
+  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>> | null = null;
+  let connectionError: string | null = null;
+  try {
+    mcpClient = await connectToMcpServer({
+      userId: caseworkerUserId,
+      accessToken: token,
+      mcpPath: '/api/admin-mcp',
+    });
+    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+  } catch (err) {
+    connectionError = err instanceof Error ? err.message : String(err);
+    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });
+  }
 
   async function callMcpTool(name: string, args: Record<string, unknown> = {}) {
-    const response = await mcpClient.callTool({ name, arguments: args });
-    const content = response.content as Array<{ type: string; text?: string }>;
-    const raw = content[0]?.text ?? '{}';
-    const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
-      result: unknown;
-      traceEvents: TraceEvent[];
-    };
-    for (const event of toolTraceEvents) trace(event);
-    return result;
+    if (!mcpClient) {
+      return { error: `Could not reach the MCP server: ${connectionError}` };
+    }
+    try {
+      const response = await mcpClient.callTool({ name, arguments: args });
+      const content = response.content as Array<{ type: string; text?: string }>;
+      const raw = content[0]?.text ?? '{}';
+      const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
+        result: unknown;
+        traceEvents: TraceEvent[];
+      };
+      for (const event of toolTraceEvents) trace(event);
+      return result;
+    } catch (err) {
+      return { error: `MCP tool call failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   }
 
   const result = streamText({

@@ -31,19 +31,46 @@ export async function POST(request: NextRequest) {
   // not re-exchanged per call. The exchange itself is the OBO event this
   // turn demonstrates; connecting once and calling multiple tools on the
   // same connection doesn't need a fresh token per call.
-  const mcpClient = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
-  trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+  //
+  // Deliberately NOT allowed to throw an unhandled rejection here: this
+  // used to be able to crash the whole request into a bare 500 with no
+  // explanation at all if the exchange or connection failed for any
+  // reason (misconfigured audience, expired subject token, MCP server
+  // unreachable) - the model never got a turn, so it couldn't even say
+  // "I can't access this," which is exactly the failure mode this file's
+  // own system prompt tells the model never to produce. Every tool call
+  // this turn now returns a structured error instead, the same shape
+  // checkCaseStatus/submitAppeal already use for an FGA denial - the
+  // model treats "couldn't reach the tool" and "reached the tool, denied"
+  // as the same kind of thing to explain plainly, not two different
+  // failure classes.
+  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>> | null = null;
+  let connectionError: string | null = null;
+  try {
+    mcpClient = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
+    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+  } catch (err) {
+    connectionError = err instanceof Error ? err.message : String(err);
+    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });
+  }
 
   async function callMcpTool(name: string, args: Record<string, unknown> = {}) {
-    const response = await mcpClient.callTool({ name, arguments: args });
-    const content = response.content as Array<{ type: string; text?: string }>;
-    const raw = content[0]?.text ?? '{}';
-    const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
-      result: unknown;
-      traceEvents: TraceEvent[];
-    };
-    for (const event of toolTraceEvents) trace(event);
-    return result;
+    if (!mcpClient) {
+      return { error: `Could not reach the MCP server: ${connectionError}` };
+    }
+    try {
+      const response = await mcpClient.callTool({ name, arguments: args });
+      const content = response.content as Array<{ type: string; text?: string }>;
+      const raw = content[0]?.text ?? '{}';
+      const { result, traceEvents: toolTraceEvents } = JSON.parse(raw) as {
+        result: unknown;
+        traceEvents: TraceEvent[];
+      };
+      for (const event of toolTraceEvents) trace(event);
+      return result;
+    } catch (err) {
+      return { error: `MCP tool call failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   }
 
   const result = streamText({
