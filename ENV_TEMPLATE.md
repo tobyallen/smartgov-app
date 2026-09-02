@@ -26,6 +26,16 @@ APP_API_AUDIENCE=https://<your-domain>/api
 # lib/mcpAuth.ts - not the browser session cookie. The persona role claim
 # rides on this access token too (see assign-persona-role.js), which is
 # how /api/admin-mcp's RBAC check works without a session.
+#
+# This value must match the registered API's identifier EXACTLY, byte for
+# byte (no trailing slash difference, no path mismatch) - it's also the
+# `audience` used in the OBO exchange from the chat backend to reach
+# this API (lib/obo.ts's exchangeForMcp), and that exchange's client-grant
+# (subject_type: "user", see the OBO section above) is scoped to this
+# exact string too. A mismatch anywhere in that chain surfaces as
+# "invalid_request: This client cannot exchange access tokens for this
+# audience" - a genuinely confusing error, since it sounds like a missing
+# grant even when the real problem is a value that doesn't match.
 MCP_API_AUDIENCE=https://<your-domain>/api/mcp
 
 # OBO — dedicated resource_server-type client that performs the token
