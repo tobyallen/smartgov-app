@@ -28,8 +28,8 @@ export function getFgaClient(): OpenFgaClient {
 }
 
 type CheckArgs = {
-  citizenUserId: string;
-  subject: string; // 'user:...' or 'agent:...'
+  onBehalfOf: string; // whose event this is - the beneficiary, not necessarily the actor
+  actingPrincipal: string; // 'user:...' or 'agent:...' - who/what is actually performing the action
   relation: string;
   object: string;
   context?: Record<string, unknown>;
@@ -42,8 +42,8 @@ type CheckArgs = {
  * as a denial, never silently allowed.
  */
 export async function checkAndLog({
-  citizenUserId,
-  subject,
+  onBehalfOf,
+  actingPrincipal,
   relation,
   object,
   context,
@@ -51,7 +51,7 @@ export async function checkAndLog({
   let decision: boolean;
   try {
     const result = await getFgaClient().check({
-      user: subject,
+      user: actingPrincipal,
       relation,
       object,
       context,
@@ -62,9 +62,9 @@ export async function checkAndLog({
   }
 
   await firestore().collection('auditEvents').add({
-    citizenUserId,
+    onBehalfOf,
     eventType: 'check',
-    subject,
+    actingPrincipal,
     relation: relation ?? null,
     object: object ?? null,
     context: context ?? null,
@@ -77,7 +77,7 @@ export async function checkAndLog({
 }
 
 type DelegationArgs = {
-  citizenUserId: string;
+  onBehalfOf: string;
   agentId: string; // 'agent:<userId>-assistant'
   caseId: string; // 'case:<uuid>'
 };
@@ -91,7 +91,7 @@ type DelegationArgs = {
  * not something the citizen needs to reason about.
  */
 export async function setAgentDelegation(
-  { citizenUserId, agentId, caseId }: DelegationArgs,
+  { onBehalfOf, agentId, caseId }: DelegationArgs,
   granted: boolean,
 ) {
   // agent_can_submit_appeal's relation type is `[agent with appeal_window]`
@@ -118,9 +118,9 @@ export async function setAgentDelegation(
   await getFgaClient().write(granted ? { writes: writeKeys } : { deletes: deleteKeys });
 
   await firestore().collection('auditEvents').add({
-    citizenUserId,
+    onBehalfOf,
     eventType: granted ? 'tuple_write' : 'tuple_delete',
-    subject: agentId,
+    actingPrincipal: agentId,
     relation: 'agent_delegate,agent_can_submit_appeal',
     object: caseId,
     context: null,
@@ -137,19 +137,19 @@ export async function setAgentDelegation(
  * FGA only evaluates the condition against what's supplied here.
  */
 export async function checkAppealWindow({
-  citizenUserId,
+  onBehalfOf,
   agentId,
   caseId,
   assessmentTime,
 }: {
-  citizenUserId: string;
+  onBehalfOf: string;
   agentId: string;
   caseId: string;
   assessmentTime: Date;
 }): Promise<boolean> {
   return checkAndLog({
-    citizenUserId,
-    subject: agentId,
+    onBehalfOf,
+    actingPrincipal: agentId,
     relation: 'agent_can_submit_appeal',
     object: caseId,
     context: {
@@ -177,12 +177,12 @@ export async function checkStepUpBulkDisable({
   approvedAt: Date;
 }): Promise<boolean> {
   return checkAndLog({
-    // checkAndLog's field is named citizenUserId (this audit log started
-    // citizen-only), but it's really just "whose event this is" —
-    // /access-log scopes by it regardless of persona, so a caseworker's
-    // own uid belongs in the same field, not a citizen's.
-    citizenUserId: caseworkerUserId,
-    subject: `user:${caseworkerUserId}`,
+    // checkAndLog's field is onBehalfOf - genuinely just "whose event
+    // this is," not citizen-specific despite the app's citizen-first
+    // origins. /access-log scopes by it regardless of persona, so a
+    // caseworker's own uid belongs here the same way a citizen's does.
+    onBehalfOf: caseworkerUserId,
+    actingPrincipal: `user:${caseworkerUserId}`,
     relation: 'caseworker_can_bulk_disable',
     object: `contractor:${contractorId}`,
     context: {
@@ -194,16 +194,16 @@ export async function checkStepUpBulkDisable({
 
 /** Logs the OBO token-exchange step itself (distinct from the FGA checks either side of it). */
 export async function logOboExchange({
-  citizenUserId,
+  onBehalfOf,
   detail,
 }: {
-  citizenUserId: string;
+  onBehalfOf: string;
   detail: Record<string, unknown>;
 }) {
   await firestore().collection('auditEvents').add({
-    citizenUserId,
+    onBehalfOf,
     eventType: 'obo_exchange',
-    subject: `user:${citizenUserId}`,
+    actingPrincipal: `user:${onBehalfOf}`,
     relation: null,
     object: null,
     context: null,

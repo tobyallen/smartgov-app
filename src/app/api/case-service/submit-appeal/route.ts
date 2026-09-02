@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
   // upstream decision. If this diverges from the upstream check, that's
   // a real inconsistency to surface, not paper over.
   const allowed = await checkAndLog({
-    citizenUserId,
-    subject: agentIdFor(citizenUserId),
+    onBehalfOf: citizenUserId,
+    actingPrincipal: agentIdFor(citizenUserId),
     relation: 'agent_can_submit_appeal',
     object: caseIdFor(row.id),
     context: {

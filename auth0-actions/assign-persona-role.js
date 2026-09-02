@@ -48,6 +48,16 @@
  * Management API client with update:users access - the existing
  * "SmartGov Action - Management API" client in this tenant), plus
  * CITIZEN_ROLE_ID and CASEWORKER_ROLE_ID (role IDs are tenant-specific).
+ *
+ * Also seeds the caseworker's contractor FGA grants on EVERY caseworker
+ * login, not just their first - ensureCaseworkerProvisioned() is
+ * idempotent (checks existing grants before writing), so this is cheap
+ * and self-healing for any caseworker account created before this fix
+ * existed. Requires SEED_CONTRACTORS_URL (the deployed app's
+ * https://<domain>/api/provisioning/seed-contractors) and
+ * PROVISIONING_SYNC_SECRET (same secret already used by
+ * provision-citizen-record.js - one shared secret protecting both
+ * internal provisioning routes, not a second one to manage).
  */
 exports.onExecutePostLogin = async (event, api) => {
   let persona = event.user.app_metadata?.persona;
@@ -76,4 +86,31 @@ exports.onExecutePostLogin = async (event, api) => {
   }
 
   api.idToken.setCustomClaim('https://smartgov.apidays/persona', persona);
+
+  // Also set on the access token, not just the ID token - MCP clients
+  // (including this app's own /api/mcp and /api/admin-mcp routes, which
+  // authenticate via Bearer/JWT rather than the browser session) only
+  // ever see the access token, never the ID token. api.accessToken is
+  // always present on the post-login api object; setCustomClaim has no
+  // effect if this transaction isn't actually minting an access token
+  // for a custom API audience, so this is safe to call unconditionally.
+  api.accessToken.setCustomClaim('https://smartgov.apidays/persona', persona);
+
+  if (persona === 'caseworker') {
+    try {
+      await fetch(event.secrets.SEED_CONTRACTORS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-provisioning-secret': event.secrets.PROVISIONING_SYNC_SECRET,
+        },
+        body: JSON.stringify({ userId: event.user.user_id }),
+      });
+    } catch {
+      // Swallowed deliberately, same reasoning as provision-citizen-record.js
+      // - never hard-fail a login over this. src/app/admin/page.tsx also
+      // calls ensureCaseworkerProvisioned() lazily on every /admin visit
+      // as a safety net if this call ever fails.
+    }
+  }
 };

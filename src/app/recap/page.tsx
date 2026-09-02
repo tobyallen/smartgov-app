@@ -20,7 +20,7 @@ export default async function RecapPage() {
   // this uid means at least one real check has happened.
   const snap = await firestore()
     .collection('auditEvents')
-    .where('citizenUserId', '==', session.user.sub)
+    .where('onBehalfOf', '==', session.user.sub)
     .limit(1)
     .get();
   const hasUsedTheFlow = !snap.empty;

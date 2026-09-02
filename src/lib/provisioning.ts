@@ -26,9 +26,9 @@ export type AgentRecord = {
 
 export type AuditEventRecord = {
   id: string;
-  citizenUserId: string;
+  onBehalfOf: string; // whose event this is - the beneficiary, not necessarily the actor
   eventType: 'check' | 'tuple_write' | 'tuple_delete' | 'obo_exchange';
-  subject: string;
+  actingPrincipal: string; // who/what actually performed the action - 'user:...' or 'agent:...'
   relation: string | null;
   object: string | null;
   context: Record<string, unknown> | null;
@@ -142,4 +142,62 @@ export async function ensureCitizenProvisioned(
     },
     agent: { id: userId, citizenUserId: userId, fgaAgentId, createdAt: agentCreatedAt },
   };
+}
+
+const CONTRACTORS = [
+  { id: 'contractor-1', name: 'Riverside Grounds Maintenance' },
+  { id: 'contractor-2', name: 'Northside Waste Collection' },
+  { id: 'contractor-3', name: 'Civic Hall Security Services' },
+  { id: 'contractor-4', name: 'Metro Road Resurfacing Co' },
+  { id: 'contractor-5', name: 'Parks & Playgrounds Ltd' },
+];
+
+/**
+ * Runs once per caseworker, on first login: seeds the shared mock
+ * contractor records (idempotent - same deterministic ids every time, a
+ * harmless overwrite on replay) and grants this caseworker's
+ * caseworker_managed / caseworker_can_bulk_disable FGA tuples on all of
+ * them. Without this, bulk_disable_contractors and disable_contractor
+ * deny unconditionally for every caseworker until someone manually runs
+ * scripts/seed-contractors.ts - which contradicts "a sent link should
+ * just work." Contractors themselves are shared/global, not
+ * per-caseworker, to avoid duplicating the same 5 mock records for every
+ * signup; only the FGA grants are caseworker-specific.
+ */
+export async function ensureCaseworkerProvisioned(caseworkerUserId: string): Promise<void> {
+  const db = firestore();
+  const fga = getFgaClient();
+
+  for (const contractor of CONTRACTORS) {
+    await db.collection('contractors').doc(contractor.id).set(
+      { name: contractor.name, status: 'active' },
+      { mergeFields: ['name'] }, // never stomp a status another caseworker already changed
+    );
+  }
+
+  async function grantedObjectsFor(relation: string) {
+    const { tuples } = await fga.read({ user: `user:${caseworkerUserId}`, relation, object: 'contractor:' });
+    return new Set(tuples.map((t) => t.key.object));
+  }
+
+  const alreadyManaged = await grantedObjectsFor('caseworker_managed');
+  const managedWrites = CONTRACTORS.filter((c) => !alreadyManaged.has(`contractor:${c.id}`)).map((c) => ({
+    user: `user:${caseworkerUserId}`,
+    relation: 'caseworker_managed',
+    object: `contractor:${c.id}`,
+  }));
+  if (managedWrites.length > 0) {
+    await fga.write({ writes: managedWrites });
+  }
+
+  const alreadyBulkGranted = await grantedObjectsFor('caseworker_can_bulk_disable');
+  const bulkWrites = CONTRACTORS.filter((c) => !alreadyBulkGranted.has(`contractor:${c.id}`)).map((c) => ({
+    user: `user:${caseworkerUserId}`,
+    relation: 'caseworker_can_bulk_disable',
+    object: `contractor:${c.id}`,
+    condition: { name: 'step_up_approved', context: {} },
+  }));
+  if (bulkWrites.length > 0) {
+    await fga.write({ writes: bulkWrites });
+  }
 }

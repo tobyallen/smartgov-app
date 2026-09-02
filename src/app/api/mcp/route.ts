@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { auth0 } from '@/lib/auth0';
+import { verifyMcpAccessToken } from '@/lib/mcpAuth';
 import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
 
 // A real, standards-compliant MCP server (Streamable HTTP over Web
@@ -41,11 +41,17 @@ function buildServer(citizenUserId: string, citizenAccessToken: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth0.getSession();
-  if (!session) return new Response('Unauthorized', { status: 401 });
+  // Real Bearer/JWT auth against this server's own MCP_API_AUDIENCE, not
+  // the browser session cookie - any independent MCP client can call
+  // this route with a token it obtained itself, the same way it would
+  // call any other Auth0-protected API. See lib/mcpAuth.ts for why this
+  // isn't OBO.
+  const caller = await verifyMcpAccessToken(request);
+  if (!caller) return new Response('Unauthorized', { status: 401 });
 
-  const { token } = await auth0.getAccessToken();
-  const server = buildServer(session.user.sub, token);
+  const authHeader = request.headers.get('authorization')!;
+  const token = authHeader.slice('Bearer '.length);
+  const server = buildServer(caller.userId, token);
   // Stateless mode: no session ID, matching the "short request/response
   // tool calls" concurrency model — no persistent connection to manage
   // across 100 attendees.

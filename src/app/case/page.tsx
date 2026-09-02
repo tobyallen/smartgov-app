@@ -34,8 +34,8 @@ export default async function CasePage() {
   // Access Log's "human viewed, allowed / agent requested, denied" pairing
   // meaningful rather than one side being real and the other cosmetic.
   await checkAndLog({
-    citizenUserId,
-    subject: `user:${citizenUserId}`,
+    onBehalfOf: citizenUserId,
+    actingPrincipal: `user:${citizenUserId}`,
     relation: 'owner',
     object: caseIdFor(row.id),
   });
@@ -86,8 +86,11 @@ export default async function CasePage() {
             Auth0 FGA
           </a>{' '}
           (fine-grained authorisation) - a system that decides, fresh on every single request,
-          exactly what your assistant is allowed to see. There&apos;s no insecure version of this
-          app to show you first, because nothing here ever skips that check.
+          exactly what your assistant is allowed to see. It&apos;s a ReBAC (relationship-based
+          access control) system underneath: access is decided by the actual relationships
+          between your assistant and your case, not by a static list of permissions. There&apos;s
+          no insecure version of this app to show you first, because nothing here ever skips that
+          check.
         </p>
       </OneTimeNote>
 
@@ -102,8 +105,8 @@ export default async function CasePage() {
             </div>
             <pre className="overflow-x-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
 {`await checkAndLog({
-  citizenUserId,
-  subject: \`agent:\${userId}-assistant\`,
+  onBehalfOf: citizenUserId,
+  actingPrincipal: \`agent:\${userId}-assistant\`,
   relation: 'agent_delegate',
   object: caseId,
 });

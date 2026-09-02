@@ -1,5 +1,6 @@
 import { auth0 } from '@/lib/auth0';
 import { isCaseworker } from '@/lib/roles';
+import { ensureCaseworkerProvisioned } from '@/lib/provisioning';
 import AdminChat from './AdminChat';
 import Link from 'next/link';
 
@@ -35,6 +36,14 @@ export default async function AdminPage() {
       </main>
     );
   }
+
+  // Lazy safety net, same pattern as ensureCitizenProvisioned() being
+  // called from /case and /chat: if the Action's synchronous seed call
+  // ever failed (network blip, secret misconfigured), this is what
+  // actually recovers a caseworker whose contractor tools would otherwise
+  // stay permanently denied. Idempotent - re-running it here on every
+  // /admin visit is a no-op once the grants already exist.
+  await ensureCaseworkerProvisioned(session.user.sub);
 
   return <AdminChat />;
 }

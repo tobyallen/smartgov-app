@@ -18,6 +18,16 @@ APP_BASE_URL=http://localhost:3000
 # register this as a Custom API / resource server in your Auth0 tenant
 APP_API_AUDIENCE=https://<your-domain>/api
 
+# MCP servers' own API (audience for both /api/mcp and /api/admin-mcp) —
+# register this as its own Custom API / resource server, distinct from
+# APP_API_AUDIENCE. Any MCP client (this app's own browser, or a genuinely
+# independent third-party client) authenticates against these routes with
+# a Bearer access token issued for THIS audience, validated via JWKS in
+# lib/mcpAuth.ts - not the browser session cookie. The persona role claim
+# rides on this access token too (see assign-persona-role.js), which is
+# how /api/admin-mcp's RBAC check works without a session.
+MCP_API_AUDIENCE=https://<your-domain>/api/mcp
+
 # OBO — dedicated resource_server-type client that performs the token
 # exchange. NOT the same client as the citizen portal above — Auth0
 # requires the exchanging entity to be its own client with

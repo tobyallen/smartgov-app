@@ -12,8 +12,8 @@ export async function GET() {
   if (!row) return NextResponse.json({ granted: false });
 
   const granted = await checkAndLog({
-    citizenUserId,
-    subject: agentIdFor(citizenUserId),
+    onBehalfOf: citizenUserId,
+    actingPrincipal: agentIdFor(citizenUserId),
     relation: 'agent_delegate',
     object: caseIdFor(row.id),
   });
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   // disable chat/tool actions while this request is in flight, so there's
   // no window where the toggle shows "on" but the tuple isn't written yet.
   await setAgentDelegation(
-    { citizenUserId, agentId: agentIdFor(citizenUserId), caseId: caseIdFor(row.id) },
+    { onBehalfOf: citizenUserId, agentId: agentIdFor(citizenUserId), caseId: caseIdFor(row.id) },
     granted,
   );
 

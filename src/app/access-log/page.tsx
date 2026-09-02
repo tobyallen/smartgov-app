@@ -25,7 +25,7 @@ export default async function AccessLogPage() {
 
   const snap = await firestore()
     .collection('auditEvents')
-    .where('citizenUserId', '==', session.user.sub)
+    .where('onBehalfOf', '==', session.user.sub)
     .orderBy('createdAt', 'desc')
     .limit(100)
     .get();
@@ -33,9 +33,9 @@ export default async function AccessLogPage() {
     const data = doc.data();
     return {
       id: doc.id,
-      citizenUserId: data.citizenUserId,
+      onBehalfOf: data.onBehalfOf,
       eventType: data.eventType,
-      subject: data.subject,
+      actingPrincipal: data.actingPrincipal,
       relation: data.relation ?? null,
       object: data.object ?? null,
       context: data.context ?? null,
@@ -70,7 +70,7 @@ export default async function AccessLogPage() {
               <span className="text-gray-400">{e.createdAt.toLocaleTimeString()}</span>
             </div>
             <div className="text-gray-600">
-              {e.subject} {e.relation ? `→ ${e.relation}` : ''} {e.object ? `on ${e.object}` : ''}
+              {e.actingPrincipal} {e.relation ? `→ ${e.relation}` : ''} {e.object ? `on ${e.object}` : ''}
               {e.decision !== null && (
                 <span className={e.decision ? 'text-green-700' : 'text-red-700'}>
                   {' '}

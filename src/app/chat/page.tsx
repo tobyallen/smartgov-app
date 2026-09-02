@@ -135,13 +135,22 @@ export default function ChatPage() {
         })}
       </div>
 
-      <button
-        onClick={() => sendMessage({ text: 'Ask for my case summary' })}
-        disabled={status !== 'ready'}
-        className="mt-4 rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
-      >
-        Ask for my case summary
-      </button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => sendMessage({ text: 'Ask for my case summary' })}
+          disabled={status !== 'ready'}
+          className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+        >
+          Ask for my case summary
+        </button>
+        <button
+          onClick={() => sendMessage({ text: 'Submit an appeal for my case' })}
+          disabled={status !== 'ready'}
+          className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+        >
+          Submit an appeal
+        </button>
+      </div>
 
       <form
         className="mt-2 flex gap-2"

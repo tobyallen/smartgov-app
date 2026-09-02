@@ -29,8 +29,8 @@ export async function checkCaseStatus(ctx: ToolContext) {
   const caseId = caseIdFor(row.id);
 
   const allowed = await checkAndLog({
-    citizenUserId: ctx.citizenUserId,
-    subject: agentId,
+    onBehalfOf: ctx.citizenUserId,
+    actingPrincipal: agentId,
     relation: 'agent_delegate',
     object: caseId,
   });
@@ -51,7 +51,7 @@ export async function submitAppeal(ctx: ToolContext) {
   const caseId = caseIdFor(row.id);
 
   const allowed = await checkAppealWindow({
-    citizenUserId: ctx.citizenUserId,
+    onBehalfOf: ctx.citizenUserId,
     agentId,
     caseId,
     assessmentTime: row.assessmentTime,

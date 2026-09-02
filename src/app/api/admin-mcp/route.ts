@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { z } from 'zod';
-import { auth0 } from '@/lib/auth0';
-import { isCaseworker } from '@/lib/roles';
+import { verifyMcpAccessToken } from '@/lib/mcpAuth';
 import { listContractors, disableContractor, bulkDisableContractors } from '@/lib/adminTools';
 import type { TraceEvent } from '@/lib/tools';
 
@@ -58,13 +57,18 @@ function buildServer(caseworkerUserId: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth0.getSession();
-  if (!session) return new Response('Unauthorized', { status: 401 });
-  if (!isCaseworker(session)) {
+  // Real Bearer/JWT auth against MCP_API_AUDIENCE, not the browser
+  // session - see lib/mcpAuth.ts. The persona claim rides on the access
+  // token itself (set by auth0-actions/assign-persona-role.js), so RBAC
+  // here needs no separate lookup - it's checked from the same verified
+  // token as the identity itself, not a second, potentially-stale source.
+  const caller = await verifyMcpAccessToken(request);
+  if (!caller) return new Response('Unauthorized', { status: 401 });
+  if (caller.persona !== 'caseworker') {
     return new Response('Forbidden — caseworker role required', { status: 403 });
   }
 
-  const server = buildServer(session.user.sub);
+  const server = buildServer(caller.userId);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   });

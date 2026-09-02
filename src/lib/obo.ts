@@ -42,7 +42,7 @@ export async function exchangeForCaseService({
   // Logged separately from the FGA checks either side of it — this is
   // the event the "cross-service" trace card in chat renders from.
   await logOboExchange({
-    citizenUserId,
+    onBehalfOf: citizenUserId,
     detail: {
       audience: process.env.CASE_SERVICE_AUDIENCE,
       note: 'sub preserved as citizen; act claim added identifying the agent that performed the exchange',
