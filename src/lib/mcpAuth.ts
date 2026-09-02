@@ -35,7 +35,15 @@ export async function verifyMcpAccessToken(request: NextRequest): Promise<Verifi
     if (!userId) return null;
     const persona = payload[PERSONA_CLAIM] === 'caseworker' ? 'caseworker' : 'citizen';
     return { userId, persona };
-  } catch {
+  } catch (err) {
+    // Deliberately logged, not silently swallowed - a bare catch{} here
+    // turned every possible validation failure (wrong audience, expired
+    // token, signature mismatch, wrong issuer) into an indistinguishable
+    // 401, which the calling chat route then reported to the model as a
+    // generic "tool call failed," which the model in turn - per its own
+    // system prompt, written before this failure mode existed - narrated
+    // as an FGA/delegation denial. None of that was the real error.
+    console.error('verifyMcpAccessToken failed:', err instanceof Error ? err.message : err);
     return null;
   }
 }

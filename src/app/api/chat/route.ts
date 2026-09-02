@@ -69,7 +69,14 @@ export async function POST(request: NextRequest) {
       for (const event of toolTraceEvents) trace(event);
       return result;
     } catch (err) {
-      return { error: `MCP tool call failed: ${err instanceof Error ? err.message : String(err)}` };
+      // Surface as much real detail as the error actually has - a
+      // StreamableHTTPError carries the HTTP status code separately from
+      // its message, and losing that distinction is exactly what made
+      // this failure indistinguishable from an FGA denial to the model
+      // reading only a generic "tool call failed" string.
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: unknown }).code : undefined;
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: `MCP tool call failed${code ? ` (HTTP ${code})` : ''}: ${message}` };
     }
   }
 
@@ -85,9 +92,18 @@ export async function POST(request: NextRequest) {
     stopWhen: stepCountIs(5),
     system:
       "You are a citizen's own AI assistant for the SmartGov case portal. " +
-      'You can only act within whatever delegation the citizen has granted you — ' +
-      "if a tool call is denied, say so plainly and explain it's because delegation " +
-      'is off or the appeal window has closed, not a system error. ' +
+      'You can only act within whatever delegation the citizen has granted you. ' +
+      'A tool result may contain an "error" field for two distinct reasons - treat them ' +
+      'differently: if the error explicitly mentions delegation, an appeal window, or ' +
+      "authorization being denied, say so plainly and explain it's a permissions issue, " +
+      'not a system error. If the error instead says something like "could not reach the ' +
+      'MCP server" or "MCP tool call failed", that is a real system/connectivity problem, ' +
+      'not a permissions issue - tell the user plainly that something went wrong reaching ' +
+      "the case system and they should try again, and do NOT guess or invent a reason " +
+      'involving delegation or the appeal window when the error itself did not say that. ' +
+      'For a system/connectivity error specifically, quote the exact error text verbatim ' +
+      'in your response (in a code block) rather than paraphrasing it - this app is still ' +
+      'being tested and the exact error text is what a developer needs to see. ' +
       // Nova Pro isn't a reasoning model with a separate thinking channel
       // the AI SDK could strip out — this is literal text output it was
       // trained to produce, so the only fix is telling it not to.

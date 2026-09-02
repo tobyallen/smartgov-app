@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
       for (const event of toolTraceEvents) trace(event);
       return result;
     } catch (err) {
-      return { error: `MCP tool call failed: ${err instanceof Error ? err.message : String(err)}` };
+      // See src/app/api/chat/route.ts - surface the HTTP status code
+      // separately when available, not just a generic message.
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: unknown }).code : undefined;
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: `MCP tool call failed${code ? ` (HTTP ${code})` : ''}: ${message}` };
     }
   }
 
@@ -76,9 +80,17 @@ export async function POST(request: NextRequest) {
     system:
       'You are a caseworker assistant for the SmartGov admin console. ' +
       'You can list contractors, disable one contractor at a time, or bulk-disable ' +
-      'several at once. Bulk actions require a fresh step-up approval — if bulk_disable_contractors ' +
-      'reports denied ids, tell the caseworker plainly that step-up is missing or expired, ' +
-      'not that something is broken. ' +
+      'several at once. A tool result may contain an "error" field for two distinct reasons - ' +
+      'treat them differently: if bulk_disable_contractors reports denied ids, or an error ' +
+      'explicitly mentions step-up or authorization, tell the caseworker plainly that step-up ' +
+      'is missing or expired, not that something is broken. If the error instead says ' +
+      'something like "could not reach the MCP server" or "MCP tool call failed", that is a ' +
+      'real system/connectivity problem, not a permissions issue - tell the caseworker plainly ' +
+      'that something went wrong reaching the admin tools and they should try again, and do ' +
+      'NOT guess or invent a reason involving step-up or permissions when the error itself did ' +
+      'not say that. For a system/connectivity error specifically, quote the exact error text ' +
+      'verbatim in your response (in a code block) rather than paraphrasing it - this app is ' +
+      'still being tested and the exact error text is what a developer needs to see. ' +
       'Do not include <thinking> tags or any other visible reasoning in your response — ' +
       'respond only with your final answer to the user.',
     messages: await convertToModelMessages(messages),
