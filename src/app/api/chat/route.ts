@@ -19,8 +19,23 @@ import type { TraceEvent } from '@/lib/tools';
 export async function POST(request: NextRequest) {
   const session = await auth0.getSession();
   if (!session) return new Response('Unauthorized', { status: 401 });
-  const { token } = await auth0.getAccessToken();
   const citizenUserId = session.user.sub;
+
+  // getAccessToken() throws when the refresh token is expired/invalid
+  // (e.g. a session that's outlived its Auth0 refresh token) - left
+  // unhandled, this crashed the whole request into a bare 500 with no
+  // explanation, the same failure shape as the MCP connect/exchange
+  // errors caught below, just one step earlier. A stale session should
+  // read as "please log in again," not silence.
+  let token: string;
+  try {
+    ({ token } = await auth0.getAccessToken());
+  } catch {
+    return Response.json(
+      { error: 'Your session has expired. Please log out and log back in.' },
+      { status: 401 },
+    );
+  }
 
   const { messages }: { messages: UIMessage[] } = await request.json();
 

@@ -24,7 +24,21 @@ export async function POST(request: NextRequest) {
   }
 
   const caseworkerUserId = session.user.sub;
-  const { token } = await auth0.getAccessToken();
+
+  // See src/app/api/chat/route.ts - getAccessToken() throws on an
+  // expired/invalid refresh token, and left unhandled that crashes the
+  // whole request into a bare 500 with no explanation, one step before
+  // the MCP connect/exchange error handling below even gets a chance to run.
+  let token: string;
+  try {
+    ({ token } = await auth0.getAccessToken());
+  } catch {
+    return Response.json(
+      { error: 'Your session has expired. Please log out and log back in.' },
+      { status: 401 },
+    );
+  }
+
   const { messages }: { messages: UIMessage[] } = await request.json();
 
   const traceEvents: TraceEvent[] = [];

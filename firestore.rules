@@ -2,37 +2,14 @@ rules_version = '2';
 
 // All reads/writes to these collections go through server-side Admin SDK
 // calls (Next.js route handlers, using a service account that bypasses
-// these rules entirely) — the app has no client-side Firestore listeners
-// yet. These rules exist as the enforced boundary for if/when that
-// changes, per the build plan's identity-bridge section: `request.auth.uid`
-// is only meaningful here because /api/firebase-token mints a custom token
-// whose uid equals the citizen's Auth0 `sub`.
-//
-// workshop-admin is an Auth0 custom claim mirrored onto the Firebase
-// custom token (see /api/firebase-token) for the presenter's closing
-// screen and the MCP audit view — not implemented yet, included here so
-// the rule shape matches where phase 6 (audit log + close) is headed.
+// these rules entirely). No client ever authenticates to Firebase - the
+// app's identity system is Auth0 only - so there is no `request.auth` to
+// scope a client-side rule to. Deny all direct client access; the server
+// routes are the only enforced boundary.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /cases/{caseId} {
-      allow read: if request.auth != null
-        && (resource.data.citizenUserId == request.auth.uid
-            || request.auth.token.workshop_admin == true);
-      allow write: if false; // server-only, via Admin SDK
-    }
-
-    match /agents/{agentId} {
-      allow read: if request.auth != null
-        && (resource.data.citizenUserId == request.auth.uid
-            || request.auth.token.workshop_admin == true);
-      allow write: if false;
-    }
-
-    match /auditEvents/{eventId} {
-      allow read: if request.auth != null
-        && (resource.data.citizenUserId == request.auth.uid
-            || request.auth.token.workshop_admin == true);
-      allow write: if false;
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

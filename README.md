@@ -38,7 +38,7 @@ Nothing in this repo is tied to a specific Auth0 tenant, FGA store, or Firebase 
 
 ## Repo layout
 
-- `src/app/` — routes: citizen chat (`chat`), case view (`case`), delegation controls (`api/delegation`), the MCP server (`api/mcp`), the Auth0↔Firestore identity bridge (`api/firebase-token`), the synchronous first-login provisioning endpoint (`api/provisioning/sync`), and an access log (`access-log`)
+- `src/app/` — routes: citizen chat (`chat`), case view (`case`), delegation controls (`api/delegation`), the MCP server (`api/mcp`), the synchronous first-login provisioning endpoint (`api/provisioning/sync`), and an access log (`access-log`)
 - `fga-model.fga` — the Auth0 FGA authorisation model
 - `auth0-actions/` — Auth0 Action source (deployable via the `auth0` CLI — see setup step 1 — or pasted into the dashboard)
 - `firestore.rules` — Firestore security rules for `cases`, `agents`, `auditEvents`
