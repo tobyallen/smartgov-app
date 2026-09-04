@@ -186,15 +186,17 @@ export default function ChatPage() {
       {delegated && (
         <div className="mb-4 flex items-center justify-between rounded border border-dashed p-2 text-xs text-gray-500">
           <span>
-            debug: force delegation to expire right now, without revoking it - demonstrates the
-            15-minute window itself lapsing rather than a manual revoke.
+            <strong>Presenter tool, not part of the citizen flow:</strong> fast-forwards the clock
+            on the same grant above, so you can show the 15-minute window lapsing on its own
+            without waiting 15 minutes. Unlike Revoke, the delegation tuple itself is untouched -
+            only its time runs out.
           </span>
           <button
             onClick={debugExpireNow}
             disabled={togglePending || status !== 'ready'}
             className="ml-2 shrink-0 rounded border border-gray-400 px-2 py-1 text-gray-700 disabled:opacity-40 dark:text-gray-300"
           >
-            Expire now (debug)
+            Fast-forward to expiry
           </button>
         </div>
       )}
