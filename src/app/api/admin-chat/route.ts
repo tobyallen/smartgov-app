@@ -44,6 +44,21 @@ export async function POST(request: NextRequest) {
   const traceEvents: TraceEvent[] = [];
   const trace = (event: TraceEvent) => traceEvents.push(event);
 
+  // See src/app/api/chat/route.ts - golden-path buttons (AdminChat.tsx's
+  // send()) submit this exact text; force the corresponding tool call
+  // rather than risk the model answering from its own conversation
+  // history instead of re-checking RBAC/FGA/step-up state.
+  const lastUserText = [...messages].reverse().find((m) => m.role === 'user')
+    ?.parts.find((p) => p.type === 'text')?.text;
+  const forcedTool =
+    lastUserText === 'List all contractors'
+      ? 'list_contractors'
+      : lastUserText === 'Disable contractor-1'
+        ? 'disable_contractor'
+        : lastUserText === 'Bulk disable contractor-2, contractor-3, and contractor-4'
+          ? 'bulk_disable_contractors'
+          : undefined;
+
   // See src/app/api/chat/route.ts for why this can't be allowed to throw
   // unhandled - a failed exchange/connection used to crash the whole
   // request into a bare 500 with no explanation at all.
@@ -95,6 +110,7 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: chatModel(),
+    toolChoice: forcedTool ? { type: 'tool', toolName: forcedTool } : 'auto',
     // See src/app/api/chat/route.ts for why this is required — without
     // it, a tool call's result never gets fed back for a follow-up
     // response, so e.g. "list the contractors" calls list_contractors
@@ -103,7 +119,16 @@ export async function POST(request: NextRequest) {
     system:
       'You are a caseworker assistant for the SmartGov admin console. ' +
       'You can list contractors, disable one contractor at a time, or bulk-disable ' +
-      'several at once. A tool result may contain an "error" field for two distinct reasons - ' +
+      'several at once. ' +
+      // See src/app/api/chat/route.ts for why this matters - RBAC, FGA
+      // grants, and step-up approval can all change between messages,
+      // and the model has no way to know their current state except by
+      // calling a tool again.
+      'Step-up approval, and FGA grants on specific contractors, can change between messages, ' +
+      'and you have no way to know their current state except by calling a tool - never answer ' +
+      'a request from what a PREVIOUS tool call in this conversation returned. Always call the ' +
+      'tool again, every single time, even if an identical request was just denied a moment ago. ' +
+      'A tool result may contain an "error" field for two distinct reasons - ' +
       'treat them differently: if bulk_disable_contractors reports denied ids, or an error ' +
       'explicitly mentions step-up or authorization, tell the caseworker plainly that step-up ' +
       'is missing or expired, not that something is broken. If the error instead says ' +

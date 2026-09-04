@@ -42,6 +42,25 @@ export async function POST(request: NextRequest) {
   const traceEvents: TraceEvent[] = [];
   const trace = (event: TraceEvent) => traceEvents.push(event);
 
+  // Golden-path buttons (chat/page.tsx's send()) submit this exact text -
+  // when a message matches, force the corresponding tool call rather
+  // than leaving it to the model's judgment. Confirmed live: without
+  // this, the model answered several identical "ask for my case
+  // summary" clicks in a row by repeating its own prior denial from the
+  // conversation transcript, never calling the tool again at all (no
+  // trace card on those turns) - a system-prompt instruction alone is a
+  // weaker guarantee than removing the choice outright for the one
+  // input shape this app fully controls. Free-form typed messages still
+  // go through the model's own judgment, same as before.
+  const lastUserText = [...messages].reverse().find((m) => m.role === 'user')
+    ?.parts.find((p) => p.type === 'text')?.text;
+  const forcedTool =
+    lastUserText === 'Ask for my case summary'
+      ? 'check_case_status'
+      : lastUserText === 'Submit an appeal for my case'
+        ? 'submit_appeal'
+        : undefined;
+
   // One exchange, one connection, reused for every tool call this turn -
   // not re-exchanged per call. The exchange itself is the OBO event this
   // turn demonstrates; connecting once and calling multiple tools on the
@@ -109,6 +128,7 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: chatModel(),
+    toolChoice: forcedTool ? { type: 'tool', toolName: forcedTool } : 'auto',
     // Without stopWhen, streamText stops after ONE step — if that step is
     // a tool call, the tool executes but its result never gets fed back
     // for a follow-up response, so the reply just... stops. stepCountIs(5)
@@ -120,6 +140,20 @@ export async function POST(request: NextRequest) {
     system:
       "You are a citizen's own AI assistant for the SmartGov case portal. " +
       'You can only act within whatever delegation the citizen has granted you. ' +
+      // Confirmed live: without this, the model answered several
+      // identical "ask for my case summary" clicks in a row by repeating
+      // its OWN prior denial from the conversation transcript, never
+      // calling the tool again - the trace showed a real FGA check on
+      // the first attempt and nothing at all on the next several, even
+      // though the citizen had granted delegation in between. Delegation
+      // and its 15-minute window can change between messages in ways the
+      // model has no way to know about except by asking again.
+      'Delegation can be granted, revoked, or expire between messages, and you have no way ' +
+      'to know its current state except by calling a tool - never answer a request to check ' +
+      'the case or submit an appeal from what a PREVIOUS tool call in this conversation ' +
+      'returned. Always call the tool again, every single time, even if an identical request ' +
+      'was just denied a moment ago - the citizen may have granted access in between, and a ' +
+      'stale answer is a real bug, not politeness. ' +
       'A tool result may contain an "error" field for two distinct reasons - treat them ' +
       'differently: if the error explicitly mentions delegation, an appeal window, or ' +
       "authorization being denied, say so plainly and explain it's a permissions issue, " +
@@ -135,7 +169,11 @@ export async function POST(request: NextRequest) {
       // the AI SDK could strip out — this is literal text output it was
       // trained to produce, so the only fix is telling it not to.
       'Do not include <thinking> tags or any other visible reasoning in your ' +
-      'response — respond only with your final answer to the user.',
+      'response — respond only with your final answer to the user. ' +
+      'When check_case_status succeeds, present the case summary as a short, friendly ' +
+      'sentence or two rather than a raw field-by-field dump - e.g. "Your case is currently ' +
+      'open, and was last assessed on 27 August 2026." Mention the case ID only if the ' +
+      'citizen specifically asks for it.',
     messages: await convertToModelMessages(messages),
     tools: {
       check_case_status: tool({
