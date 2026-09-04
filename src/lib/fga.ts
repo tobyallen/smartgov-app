@@ -1,4 +1,4 @@
-import { OpenFgaClient, CredentialsMethod } from '@openfga/sdk';
+import { ClientWriteRequestOnMissingDeletes, OpenFgaClient, CredentialsMethod } from '@openfga/sdk';
 import { firestore } from './firebase-admin';
 
 // Configured against Auth0 FGA's hosted endpoint (see ENV_TEMPLATE.md) —
@@ -121,7 +121,27 @@ export async function setAgentDelegation(
     { user: agentId, relation: 'agent_can_submit_appeal', object: caseId },
   ];
 
-  await getFgaClient().write(granted ? { writes: writeKeys } : { deletes: deleteKeys });
+  // Always delete first, even on grant - agent_delegate only started
+  // carrying a condition once delegation_window was added to the model,
+  // so anyone who'd already granted delegation before that change has a
+  // stale, unconditioned tuple sitting for the exact same user/relation/
+  // object. Writing the new conditioned tuple on top of it fails outright
+  // ("cannot write a tuple which already exists"), a real production
+  // 500 this caused once discovered - FGA treats condition as metadata
+  // on an existing key, not something a write can change in place; per
+  // OpenFGA's own docs the only way to change a tuple's condition is
+  // delete-then-write. onMissingDeletes: 'ignore' makes this safe for
+  // the common case too (no prior tuple at all, a citizen's first-ever
+  // grant) - sequential rather than one transactional call, since mixing
+  // the same key in both a request's writes and deletes arrays isn't
+  // documented as supported and this app would rather fail closed
+  // (still denied) than guess wrong about that.
+  await getFgaClient().deleteTuples(deleteKeys, {
+    conflict: { onMissingDeletes: ClientWriteRequestOnMissingDeletes.Ignore },
+  });
+  if (granted) {
+    await getFgaClient().writeTuples(writeKeys);
+  }
 
   // caseId is `case:<caseRowId>` (see caseIdFor) - strip the FGA type
   // prefix to get back the Firestore doc id, since cases are keyed by
