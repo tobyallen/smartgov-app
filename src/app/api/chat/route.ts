@@ -128,7 +128,15 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: chatModel(),
-    toolChoice: forcedTool ? { type: 'tool', toolName: forcedTool } : 'auto',
+    // toolChoice is a per-STEP override via prepareStep, not a top-level
+    // setting - a top-level toolChoice forces every step, not just the
+    // first, so the model can never take the tool-free "just answer"
+    // step and the loop burns through all of stopWhen's steps calling
+    // the same tool repeatedly with no final text at all (confirmed
+    // live). Forcing only step 1 gets the determinism this was for
+    // without preventing the model from answering afterward.
+    prepareStep: ({ stepNumber }) =>
+      stepNumber === 0 && forcedTool ? { toolChoice: { type: 'tool', toolName: forcedTool } } : {},
     // Without stopWhen, streamText stops after ONE step — if that step is
     // a tool call, the tool executes but its result never gets fed back
     // for a follow-up response, so the reply just... stops. stepCountIs(5)

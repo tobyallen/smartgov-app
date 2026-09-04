@@ -110,7 +110,12 @@ export async function POST(request: NextRequest) {
 
   const result = streamText({
     model: chatModel(),
-    toolChoice: forcedTool ? { type: 'tool', toolName: forcedTool } : 'auto',
+    // See src/app/api/chat/route.ts - toolChoice must be a per-step
+    // override (prepareStep), forced only on step 1, not a top-level
+    // setting that forces every step and leaves no room for a final
+    // text-only answer.
+    prepareStep: ({ stepNumber }) =>
+      stepNumber === 0 && forcedTool ? { toolChoice: { type: 'tool', toolName: forcedTool } } : {},
     // See src/app/api/chat/route.ts for why this is required — without
     // it, a tool call's result never gets fed back for a follow-up
     // response, so e.g. "list the contractors" calls list_contractors
