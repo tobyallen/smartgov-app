@@ -5,14 +5,21 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
+import { TokenBlock } from '@/components/TokenBlock';
 
-type TraceEvent = { kind: 'fga_check' | 'obo_exchange'; label: string; allowed?: boolean };
+type TraceEvent = {
+  kind: 'fga_check' | 'obo_exchange';
+  label: string;
+  allowed?: boolean;
+  token?: string;
+};
 
 function TraceCard({ event }: { event: TraceEvent }) {
   if (event.kind === 'obo_exchange') {
     return (
       <div className="my-1 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
         🔁 {event.label}
+        {event.token && <TokenBlock label="Exchanged token" token={event.token} />}
       </div>
     );
   }
@@ -28,8 +35,15 @@ function TraceCard({ event }: { event: TraceEvent }) {
   );
 }
 
+// Mirrors the FGA model's delegation_window duration (fga-model.fga) -
+// purely cosmetic here, the actual expiry is enforced server-side on
+// every check regardless of what this constant says.
+const DELEGATION_WINDOW_MINUTES = 15;
+
 export default function ChatPage() {
   const [delegated, setDelegated] = useState(false);
+  const [delegationGrantedAt, setDelegationGrantedAt] = useState<string | null>(null);
+  const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [togglePending, setTogglePending] = useState(false);
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -39,12 +53,37 @@ export default function ChatPage() {
   function refreshDelegation() {
     return fetch('/api/delegation')
       .then((r) => r.json())
-      .then((data) => setDelegated(Boolean(data.granted)));
+      .then((data) => {
+        setDelegated(Boolean(data.granted));
+        setDelegationGrantedAt(data.delegationGrantedAt ?? null);
+      });
   }
 
   useEffect(() => {
     refreshDelegation();
+    // Delegation can expire purely from time passing, with no click of
+    // any kind - a periodic refetch is what makes that visible without
+    // needing a chat turn or a page reload to notice.
+    const interval = setInterval(refreshDelegation, 15_000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Date.now() is impure, so it can't be called during render (React
+  // flags this) - recompute the countdown in an effect, ticking every
+  // 30s, rather than deriving it inline from the current render's clock.
+  useEffect(() => {
+    function tick() {
+      if (!delegationGrantedAt) {
+        setMinutesRemaining(null);
+        return;
+      }
+      const elapsedMinutes = Math.floor((Date.now() - new Date(delegationGrantedAt).getTime()) / 60_000);
+      setMinutesRemaining(Math.max(0, DELEGATION_WINDOW_MINUTES - elapsedMinutes));
+    }
+    tick();
+    const interval = setInterval(tick, 30_000);
+    return () => clearInterval(interval);
+  }, [delegationGrantedAt]);
 
   async function toggleDelegation() {
     setTogglePending(true);
@@ -58,6 +97,17 @@ export default function ChatPage() {
     // just sent succeeded — a prior bug had this button show "Delegated"
     // purely from optimistic local state while a real check on the same
     // tuple came back denied, because nothing ever reconciled the two.
+    if (res.ok) await refreshDelegation();
+    setTogglePending(false);
+  }
+
+  // Debug-only: forces the delegation_window condition to fail on the
+  // next check without touching the FGA tuple - see expireDelegationNow
+  // in lib/fga.ts. Not part of the citizen-facing story; a presenter's
+  // reliability escape hatch for demoing expiry on cue.
+  async function debugExpireNow() {
+    setTogglePending(true);
+    const res = await fetch('/api/delegation', { method: 'DELETE' });
     if (res.ok) await refreshDelegation();
     setTogglePending(false);
   }
@@ -76,7 +126,9 @@ export default function ChatPage() {
           Your assistant doesn&apos;t automatically inherit your access to your own data -
           it&apos;s a separate identity, and until you grant it a scoped permission below, every
           request it makes on your behalf will be denied. You can revoke that permission at any
-          time, and the very next request will reflect it immediately.
+          time, and the very next request will reflect it immediately - or just wait: delegation
+          expires on its own after {DELEGATION_WINDOW_MINUTES} minutes, checked fresh every time,
+          not something you have to remember to turn off.
         </p>
       </OneTimeNote>
 
@@ -85,6 +137,13 @@ export default function ChatPage() {
           <div className="font-medium">Allow my AI assistant to access this case</div>
           <div className="text-xs text-gray-500">
             You can always see your own case — this only controls what your assistant can see.
+            {delegated && minutesRemaining !== null && (
+              <span className="ml-1">
+                {minutesRemaining > 0
+                  ? `Expires in ${minutesRemaining} min unless revoked first.`
+                  : 'Expiring now — the next check will deny it.'}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -109,6 +168,22 @@ export default function ChatPage() {
           </span>
         </div>
       </div>
+
+      {delegated && (
+        <div className="mb-4 flex items-center justify-between rounded border border-dashed p-2 text-xs text-gray-500">
+          <span>
+            debug: force delegation to expire right now, without revoking it - demonstrates the
+            15-minute window itself lapsing rather than a manual revoke.
+          </span>
+          <button
+            onClick={debugExpireNow}
+            disabled={togglePending || status !== 'ready'}
+            className="ml-2 shrink-0 rounded border border-gray-400 px-2 py-1 text-gray-700 disabled:opacity-40 dark:text-gray-300"
+          >
+            Expire now (debug)
+          </button>
+        </div>
+      )}
 
       <div className="space-y-2">
         {messages.map((message) => {

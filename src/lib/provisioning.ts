@@ -15,6 +15,12 @@ export type CaseRecord = {
   assessmentTime: Date;
   status: string;
   createdAt: Date;
+  // Set/cleared by setAgentDelegation on grant/revoke - never written here.
+  // Read back at check time to evaluate the delegation_window FGA
+  // condition, the same pattern assessmentTime already follows for
+  // appeal_window: FGA conditions take real values from the caller, not
+  // from anything stored on the tuple itself.
+  delegationGrantedAt: Date | null;
 };
 
 export type AgentRecord = {
@@ -47,6 +53,7 @@ export async function findCaseByCitizen(citizenUserId: string): Promise<CaseReco
     assessmentTime: data.assessmentTime.toDate(),
     status: data.status,
     createdAt: data.createdAt.toDate(),
+    delegationGrantedAt: data.delegationGrantedAt?.toDate() ?? null,
   };
 }
 
@@ -60,6 +67,7 @@ export async function findCaseById(caseId: string): Promise<CaseRecord | undefin
     assessmentTime: data.assessmentTime.toDate(),
     status: data.status,
     createdAt: data.createdAt.toDate(),
+    delegationGrantedAt: data.delegationGrantedAt?.toDate() ?? null,
   };
 }
 
@@ -110,6 +118,11 @@ export async function ensureCitizenProvisioned(
     assessmentTime: existingCase?.assessmentTime ?? now,
     status: existingCase?.status ?? 'open',
     createdAt: caseCreatedAt,
+    // Preserve an existing grant across a re-provisioning replay (this
+    // runs as a lazy fallback from other pages too, not just first
+    // login) - a bare overwrite here would silently un-delegate a
+    // citizen who already granted access, with no toggle click to blame.
+    delegationGrantedAt: existingCase?.delegationGrantedAt ?? null,
   });
 
   const fgaAgentId = agentIdFor(userId);
@@ -139,6 +152,7 @@ export async function ensureCitizenProvisioned(
       assessmentTime: existingCase?.assessmentTime ?? now,
       status: existingCase?.status ?? 'open',
       createdAt: caseCreatedAt,
+      delegationGrantedAt: existingCase?.delegationGrantedAt ?? null,
     },
     agent: { id: userId, citizenUserId: userId, fgaAgentId, createdAt: agentCreatedAt },
   };

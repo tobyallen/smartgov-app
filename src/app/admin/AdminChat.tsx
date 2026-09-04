@@ -5,14 +5,21 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
+import { TokenBlock } from '@/components/TokenBlock';
 
-type TraceEvent = { kind: 'fga_check' | 'obo_exchange'; label: string; allowed?: boolean };
+type TraceEvent = {
+  kind: 'fga_check' | 'obo_exchange';
+  label: string;
+  allowed?: boolean;
+  token?: string;
+};
 
 function TraceCard({ event }: { event: TraceEvent }) {
   if (event.kind === 'obo_exchange') {
     return (
       <div className="my-1 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
         🔁 {event.label}
+        {event.token && <TokenBlock label="Exchanged token" token={event.token} />}
       </div>
     );
   }

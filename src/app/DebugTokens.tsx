@@ -1,48 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { TokenBlock } from '@/components/TokenBlock';
 
 type TokenData = { idToken: string | null; accessToken: string; user: Record<string, unknown> };
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split('.')[1];
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-function jwtIoUrl(token: string) {
-  return `https://jwt.io/#id_token=${encodeURIComponent(token)}`;
-}
-
-function TokenBlock({ label, token }: { label: string; token: string }) {
-  const claims = decodeJwtPayload(token);
-  return (
-    <div className="mt-2">
-      <div className="flex items-center justify-between">
-        <div className="font-medium">{label}</div>
-        <a
-          href={jwtIoUrl(token)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
-        >
-          View on jwt.io
-        </a>
-      </div>
-      <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
-        {claims ? JSON.stringify(claims, null, 2) : '(could not decode)'}
-      </pre>
-      <details className="mt-1">
-        <summary className="cursor-pointer text-[11px] text-gray-400">Raw token</summary>
-        <div className="mt-1 break-all rounded bg-black/80 p-2 text-[10px] text-gray-300">{token}</div>
-      </details>
-    </div>
-  );
-}
 
 // Fetches this session's own raw tokens on demand (never on mount, to
 // avoid pulling tokens into the page for every visitor who never opens

@@ -47,15 +47,20 @@ export async function POST(request: NextRequest) {
   // See src/app/api/chat/route.ts for why this can't be allowed to throw
   // unhandled - a failed exchange/connection used to crash the whole
   // request into a bare 500 with no explanation at all.
-  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>> | null = null;
+  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>>['client'] | null = null;
   let connectionError: string | null = null;
   try {
-    mcpClient = await connectToMcpServer({
+    const connection = await connectToMcpServer({
       userId: caseworkerUserId,
       accessToken: token,
       mcpPath: '/api/admin-mcp',
     });
-    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+    mcpClient = connection.client;
+    trace({
+      kind: 'obo_exchange',
+      label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
+      token: connection.exchangedToken,
+    });
   } catch (err) {
     connectionError = err instanceof Error ? err.message : String(err);
     trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });

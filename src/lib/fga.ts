@@ -84,23 +84,29 @@ type DelegationArgs = {
 
 /**
  * Grants or revokes the citizen's own agent access to their own case.
- * Writes/deletes BOTH relations together: `agent_delegate` (plain, gates
- * chat/view/most tool calls) and `agent_can_submit_appeal` (conditioned
- * on appeal_window, gates only the submit_appeal tool). One toggle,
- * one action — the two-relation split is an internal modeling detail,
- * not something the citizen needs to reason about.
+ * Writes/deletes BOTH relations together: `agent_delegate` (conditioned
+ * on delegation_window - self-expires 15 minutes after grant) and
+ * `agent_can_submit_appeal` (conditioned on appeal_window, gates only
+ * the submit_appeal tool). One toggle, one action — the two-relation
+ * split is an internal modeling detail, not something the citizen needs
+ * to reason about.
  */
 export async function setAgentDelegation(
   { onBehalfOf, agentId, caseId }: DelegationArgs,
   granted: boolean,
 ) {
-  // agent_can_submit_appeal's relation type is `[agent with appeal_window]`
-  // — the model requires every tuple written for it to explicitly declare
-  // that condition, even though we deliberately store no context on the
-  // tuple itself (current_time/assessment_time are supplied fresh at
-  // check time from our own Firestore data, not from FGA tuple storage).
+  // Both relations' types require every tuple written for them to
+  // explicitly declare their condition, even though we deliberately
+  // store no context on the tuple itself — current_time/granted_at
+  // (and current_time/assessment_time) are supplied fresh at check time
+  // from our own Firestore data, not from FGA tuple storage.
   const writeKeys = [
-    { user: agentId, relation: 'agent_delegate', object: caseId },
+    {
+      user: agentId,
+      relation: 'agent_delegate',
+      object: caseId,
+      condition: { name: 'delegation_window', context: {} },
+    },
     {
       user: agentId,
       relation: 'agent_can_submit_appeal',
@@ -117,6 +123,15 @@ export async function setAgentDelegation(
 
   await getFgaClient().write(granted ? { writes: writeKeys } : { deletes: deleteKeys });
 
+  // caseId is `case:<caseRowId>` (see caseIdFor) - strip the FGA type
+  // prefix to get back the Firestore doc id, since cases are keyed by
+  // the citizen's own uid, not the prefixed FGA object string.
+  const caseRowId = caseId.replace(/^case:/, '');
+  await firestore()
+    .collection('cases')
+    .doc(caseRowId)
+    .set({ delegationGrantedAt: granted ? new Date() : null }, { merge: true });
+
   await firestore().collection('auditEvents').add({
     onBehalfOf,
     eventType: granted ? 'tuple_write' : 'tuple_delete',
@@ -126,6 +141,75 @@ export async function setAgentDelegation(
     context: null,
     decision: null,
     detail: null,
+    createdAt: new Date(),
+  });
+}
+
+/**
+ * The agent_delegate boundary specifically: mirrors checkAppealWindow's
+ * pattern exactly. delegationGrantedAt comes from our own `cases`
+ * Firestore doc (set by setAgentDelegation above), never from FGA-stored
+ * tuple context - FGA only evaluates the condition against what's
+ * supplied here. If no grant has ever been made, current_time is passed
+ * equal to a zero-value granted_at so the condition evaluates false
+ * (denied) rather than needing a special no-grant case in every caller.
+ */
+export async function checkDelegation({
+  onBehalfOf,
+  agentId,
+  caseId,
+  delegationGrantedAt,
+}: {
+  onBehalfOf: string;
+  agentId: string;
+  caseId: string;
+  delegationGrantedAt: Date | null;
+}): Promise<boolean> {
+  return checkAndLog({
+    onBehalfOf,
+    actingPrincipal: agentId,
+    relation: 'agent_delegate',
+    object: caseId,
+    context: {
+      current_time: new Date().toISOString(),
+      granted_at: (delegationGrantedAt ?? new Date(0)).toISOString(),
+    },
+  });
+}
+
+/**
+ * Debug-only escape hatch for demo reliability: backdates
+ * delegationGrantedAt far enough that delegation_window's condition
+ * evaluates false on the very next check, without touching the FGA
+ * tuple itself. Deliberately NOT the same as a real revoke
+ * (setAgentDelegation with granted=false) - the agent_delegate tuple
+ * stays written, so this demonstrates the condition itself failing
+ * (the actual expiry mechanism), not a manual revoke standing in for it.
+ * Lets a presenter trigger the "delegation just expired" moment on cue
+ * instead of waiting out the real 15-minute window live.
+ */
+export async function expireDelegationNow({
+  onBehalfOf,
+  caseId,
+}: {
+  onBehalfOf: string;
+  caseId: string;
+}) {
+  const caseRowId = caseId.replace(/^case:/, '');
+  await firestore()
+    .collection('cases')
+    .doc(caseRowId)
+    .set({ delegationGrantedAt: new Date(0) }, { merge: true });
+
+  await firestore().collection('auditEvents').add({
+    onBehalfOf,
+    eventType: 'tuple_write',
+    actingPrincipal: `user:${onBehalfOf}`,
+    relation: null,
+    object: caseId,
+    context: null,
+    decision: null,
+    detail: { note: 'debug: delegation force-expired, tuple left in place' },
     createdAt: new Date(),
   });
 }

@@ -59,11 +59,16 @@ export async function POST(request: NextRequest) {
   // model treats "couldn't reach the tool" and "reached the tool, denied"
   // as the same kind of thing to explain plainly, not two different
   // failure classes.
-  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>> | null = null;
+  let mcpClient: Awaited<ReturnType<typeof connectToMcpServer>>['client'] | null = null;
   let connectionError: string | null = null;
   try {
-    mcpClient = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
-    trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)' });
+    const connection = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
+    mcpClient = connection.client;
+    trace({
+      kind: 'obo_exchange',
+      label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
+      token: connection.exchangedToken,
+    });
   } catch (err) {
     connectionError = err instanceof Error ? err.message : String(err);
     trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });

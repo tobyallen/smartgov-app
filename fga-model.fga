@@ -11,10 +11,12 @@ type case
     # toggled. Gates the citizen's own view of their own case.
     define owner: [user]
 
-    # Plain delegation — toggled on/off live by the citizen. Gates the
+    # Delegation — toggled on/off live by the citizen, and now also
+    # self-expiring: granted_at is stamped by setAgentDelegation at grant
+    # time and re-read fresh on every check, the same pattern
+    # agent_can_submit_appeal already uses for appeal_window. Gates the
     # agent's chat replies and most MCP tool calls (e.g. check_case_status).
-    # Deliberately unconditional: view access isn't time-boxed.
-    define agent_delegate: [agent]
+    define agent_delegate: [agent with delegation_window]
 
     # A second, conditioned relation written/removed by the SAME toggle
     # action as agent_delegate (see setAgentDelegation). Gates only the
@@ -38,6 +40,14 @@ type contractor
 
 condition appeal_window(current_time: timestamp, assessment_time: timestamp) {
   current_time < assessment_time + duration("720h")
+}
+
+# 15 minutes: short enough to plausibly fire during a single workshop
+# session without a manual revoke. See /api/delegation's DELETE-and-debug
+# "expire now" escape hatch for demo reliability if real elapsed time
+# doesn't cooperate on the day.
+condition delegation_window(current_time: timestamp, granted_at: timestamp) {
+  current_time < granted_at + duration("15m")
 }
 
 condition step_up_approved(approved_at: timestamp, current_time: timestamp) {
