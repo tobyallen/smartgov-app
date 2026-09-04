@@ -19,6 +19,22 @@ export function jwtIoUrl(token: string) {
   return `https://jwt.io/#id_token=${encodeURIComponent(token)}`;
 }
 
+// Shared by both chat pages' useChat onError handlers. The transport
+// throws `new Error(await response.text())` for any non-2xx response
+// (see @ai-sdk 'ai' package's HttpChatTransport) - our own API routes
+// return a JSON body ({ error: "..." }), so unwrap that shape and fall
+// back to the raw text for anything else (a network failure, or a route
+// that doesn't return JSON).
+export function chatErrorMessage(error: Error): string {
+  try {
+    const parsed = JSON.parse(error.message);
+    if (parsed && typeof parsed.error === 'string') return parsed.error;
+  } catch {
+    // not JSON - fall through
+  }
+  return error.message || 'Something went wrong reaching the chat backend.';
+}
+
 export function TokenBlock({ label, token }: { label: string; token: string }) {
   const claims = decodeJwtPayload(token);
   return (

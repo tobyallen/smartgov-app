@@ -5,7 +5,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
-import { TokenBlock } from '@/components/TokenBlock';
+import { chatErrorMessage, TokenBlock } from '@/components/TokenBlock';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -45,9 +45,15 @@ export default function ChatPage() {
   const [delegationGrantedAt, setDelegationGrantedAt] = useState<string | null>(null);
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [togglePending, setTogglePending] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
     onFinish: () => refreshDelegation(),
+    // Without this, a non-streaming error response (a stale-session 401,
+    // or any other pre-stream failure) failed completely silently in the
+    // UI - the request shows up in the network tab and nowhere else,
+    // exactly what prompted this fix.
+    onError: (error) => setChatError(chatErrorMessage(error)),
   });
 
   function refreshDelegation() {
@@ -57,6 +63,14 @@ export default function ChatPage() {
         setDelegated(Boolean(data.granted));
         setDelegationGrantedAt(data.delegationGrantedAt ?? null);
       });
+  }
+
+  // Clears any previous error before a new attempt, so a fixed problem
+  // (e.g. logging back in after the "session expired" message) doesn't
+  // leave a stale error banner sitting above a message that actually worked.
+  function send(text: string) {
+    setChatError(null);
+    sendMessage({ text });
   }
 
   useEffect(() => {
@@ -212,14 +226,14 @@ export default function ChatPage() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
-          onClick={() => sendMessage({ text: 'Ask for my case summary' })}
+          onClick={() => send('Ask for my case summary')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
         >
           Ask for my case summary
         </button>
         <button
-          onClick={() => sendMessage({ text: 'Submit an appeal for my case' })}
+          onClick={() => send('Submit an appeal for my case')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
         >
@@ -227,13 +241,19 @@ export default function ChatPage() {
         </button>
       </div>
 
+      {chatError && (
+        <div className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {chatError}
+        </div>
+      )}
+
       <form
         className="mt-2 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
           if (input.value.trim()) {
-            sendMessage({ text: input.value });
+            send(input.value);
             input.value = '';
           }
         }}

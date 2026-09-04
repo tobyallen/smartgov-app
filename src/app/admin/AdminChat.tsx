@@ -5,7 +5,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
-import { TokenBlock } from '@/components/TokenBlock';
+import { chatErrorMessage, TokenBlock } from '@/components/TokenBlock';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -38,9 +38,20 @@ function TraceCard({ event }: { event: TraceEvent }) {
 export default function AdminChat() {
   const [stepUpPending, setStepUpPending] = useState(false);
   const [stepUpApprovedAt, setStepUpApprovedAt] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/admin-chat' }),
+    // Without this, a non-streaming error response (a stale-session 401,
+    // or any other pre-stream failure) failed completely silently in the
+    // UI - see src/app/chat/page.tsx for the citizen-side version of
+    // this same fix.
+    onError: (error) => setChatError(chatErrorMessage(error)),
   });
+
+  function send(text: string) {
+    setChatError(null);
+    sendMessage({ text });
+  }
 
   async function requestStepUp() {
     setStepUpPending(true);
@@ -127,23 +138,21 @@ export default function AdminChat() {
 
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         <button
-          onClick={() => sendMessage({ text: 'List all contractors' })}
+          onClick={() => send('List all contractors')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-blue-600 disabled:opacity-40 dark:text-blue-400"
         >
           List contractors
         </button>
         <button
-          onClick={() => sendMessage({ text: 'Disable contractor-1' })}
+          onClick={() => send('Disable contractor-1')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-blue-600 disabled:opacity-40 dark:text-blue-400"
         >
           Disable a contractor
         </button>
         <button
-          onClick={() =>
-            sendMessage({ text: 'Bulk disable contractor-2, contractor-3, and contractor-4' })
-          }
+          onClick={() => send('Bulk disable contractor-2, contractor-3, and contractor-4')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-blue-600 disabled:opacity-40 dark:text-blue-400"
         >
@@ -155,13 +164,19 @@ export default function AdminChat() {
         that&apos;s the gate this vignette is demonstrating.
       </p>
 
+      {chatError && (
+        <div className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {chatError}
+        </div>
+      )}
+
       <form
         className="mt-2 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
           if (input.value.trim()) {
-            sendMessage({ text: input.value });
+            send(input.value);
             input.value = '';
           }
         }}

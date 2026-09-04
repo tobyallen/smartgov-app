@@ -6,6 +6,18 @@ export const auth0 = new Auth0Client({
   clientSecret: process.env.AUTH0_CLIENT_SECRET!,
   secret: process.env.AUTH0_SECRET!,
   appBaseUrl: process.env.APP_BASE_URL!,
+  // Was previously unset, meaning the SDK's own defaults applied
+  // silently: rolling, 1-day inactivity, 3-day absolute cap - explaining
+  // a real symptom (a session reloaded the next day with no activity in
+  // between got a bare 401 on the next chat message, since the session
+  // cookie itself had already expired, independent of anything on the
+  // Auth0 tenant - the refresh token there is non-expiring). Explicit
+  // now so a stale session expires close to a single workshop sitting,
+  // not silently on whatever the SDK happens to default to today.
+  session: {
+    inactivityDuration: 60 * 60, // 1 hour
+    absoluteDuration: 60 * 60, // no rolling benefit beyond the inactivity window for this app
+  },
   // Without an explicit audience, Auth0 issues an opaque access token,
   // not a JWT - confirmed live: the OBO token-exchange grant rejected
   // that opaque token with "Not supported JWT type in subject token,"
