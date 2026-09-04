@@ -22,8 +22,8 @@ export async function connectToMcpServer({
   userId: string;
   accessToken: string;
   mcpPath: '/api/mcp' | '/api/admin-mcp';
-}): Promise<{ client: Client; exchangedToken: string }> {
-  const exchangedToken = await exchangeForMcp({ userId, accessToken });
+}): Promise<{ client: Client; exchangedToken: string; freshlyExchanged: boolean }> {
+  const { token: exchangedToken, freshlyExchanged } = await exchangeForMcp({ userId, accessToken });
 
   const transport = new StreamableHTTPClientTransport(
     new URL(mcpPath, process.env.APP_BASE_URL!),
@@ -37,7 +37,9 @@ export async function connectToMcpServer({
   const client = new Client({ name: 'smartgov-chat-backend', version: '1.0.0' });
   await client.connect(transport);
   // Returned alongside the client, not just used internally, so the
-  // caller's own trace() call can attach it to the obo_exchange event -
-  // this function has no trace context of its own to log through.
-  return { client, exchangedToken };
+  // caller's own trace() call can attach it to the obo_exchange event,
+  // and only log that event when a real exchange happened this call -
+  // exchangeForMcp caches the token (see lib/obo.ts), so most turns
+  // within the token's validity window reuse it silently.
+  return { client, exchangedToken, freshlyExchanged };
 }

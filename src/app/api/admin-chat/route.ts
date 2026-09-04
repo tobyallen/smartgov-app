@@ -56,11 +56,15 @@ export async function POST(request: NextRequest) {
       mcpPath: '/api/admin-mcp',
     });
     mcpClient = connection.client;
-    trace({
-      kind: 'obo_exchange',
-      label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
-      token: connection.exchangedToken,
-    });
+    // See src/app/api/chat/route.ts - only a real event on a fresh
+    // exchange, since exchangeForMcp caches the token across calls.
+    if (connection.freshlyExchanged) {
+      trace({
+        kind: 'obo_exchange',
+        label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
+        token: connection.exchangedToken,
+      });
+    }
   } catch (err) {
     connectionError = err instanceof Error ? err.message : String(err);
     trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });

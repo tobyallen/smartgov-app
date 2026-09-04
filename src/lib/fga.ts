@@ -1,4 +1,9 @@
-import { ClientWriteRequestOnMissingDeletes, OpenFgaClient, CredentialsMethod } from '@openfga/sdk';
+import {
+  ClientWriteRequestOnMissingDeletes,
+  ConsistencyPreference,
+  OpenFgaClient,
+  CredentialsMethod,
+} from '@openfga/sdk';
 import { firestore } from './firebase-admin';
 
 // Configured against Auth0 FGA's hosted endpoint (see ENV_TEMPLATE.md) —
@@ -50,12 +55,21 @@ export async function checkAndLog({
 }: CheckArgs): Promise<boolean> {
   let decision: boolean;
   try {
-    const result = await getFgaClient().check({
-      user: actingPrincipal,
-      relation,
-      object,
-      context,
-    });
+    // Without this, OpenFGA's default (MINIMIZE_LATENCY) is allowed to
+    // serve a cached, stale result for however long the store's cache
+    // TTL is - confirmed live: a citizen granted delegation, then had
+    // check_case_status denied for 10-34 seconds afterward, well past
+    // any plausible replication lag, because the check kept reading the
+    // pre-grant cached answer. This app's check volume is trivial (a
+    // handful of concurrent workshop attendees, not production QPS), so
+    // there's no real latency cost to paying for a fresh read every
+    // time - correctness right after a grant/revoke matters far more
+    // here than shaving milliseconds off a check nobody's waiting on at
+    // scale.
+    const result = await getFgaClient().check(
+      { user: actingPrincipal, relation, object, context },
+      { consistency: ConsistencyPreference.HigherConsistency },
+    );
     decision = result.allowed ?? false;
   } catch {
     decision = false; // fail closed

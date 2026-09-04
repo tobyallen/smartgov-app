@@ -64,11 +64,18 @@ export async function POST(request: NextRequest) {
   try {
     const connection = await connectToMcpServer({ userId: citizenUserId, accessToken: token, mcpPath: '/api/mcp' });
     mcpClient = connection.client;
-    trace({
-      kind: 'obo_exchange',
-      label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
-      token: connection.exchangedToken,
-    });
+    // Only a real event on a fresh exchange - most turns reuse the
+    // cached MCP_API_AUDIENCE token (see lib/obo.ts), so there's nothing
+    // trace-worthy to show for those, and showing an identical "exchanging
+    // token" card on every single message would misrepresent what
+    // actually happened this turn.
+    if (connection.freshlyExchanged) {
+      trace({
+        kind: 'obo_exchange',
+        label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)',
+        token: connection.exchangedToken,
+      });
+    }
   } catch (err) {
     connectionError = err instanceof Error ? err.message : String(err);
     trace({ kind: 'obo_exchange', label: 'Exchanging token to reach the MCP server (MCP_API_AUDIENCE)', allowed: false });

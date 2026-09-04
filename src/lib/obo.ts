@@ -1,4 +1,5 @@
 import { logOboExchange } from './fga';
+import { firestore } from './firebase-admin';
 
 /**
  * RFC 8693 On-Behalf-Of token exchange. Two call sites, two hops, both
@@ -58,11 +59,32 @@ async function exchangeToken({
   return access_token;
 }
 
+function decodeJwtExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The outer hop: chat backend -> this app's own MCP server
  * (/api/mcp or /api/admin-mcp), used for every tool call now that the
  * chat routes are real MCP clients rather than calling tool handlers
  * in-process. See src/lib/mcpClient.ts for where this gets used.
+ *
+ * Cached in Firestore, not re-exchanged on every call: the MCP_API_AUDIENCE
+ * token has its own real validity window (900s on the tenant, matching
+ * delegation_window) - minting a fresh one on every single chat message
+ * is pure network overhead against Auth0's /oauth/token endpoint for no
+ * security benefit, since the token itself doesn't expire that fast.
+ * This is deliberately separate from the FGA delegation check inside
+ * check_case_status/submit_appeal, which still runs fresh on every call -
+ * a cached MCP token only proves "this backend was recently allowed to
+ * reach the MCP server," never "the citizen currently has delegation,"
+ * which is a different, faster-changing fact this token was never meant
+ * to encode.
  */
 export async function exchangeForMcp({
   userId,
@@ -70,8 +92,23 @@ export async function exchangeForMcp({
 }: {
   userId: string;
   accessToken: string;
-}): Promise<string> {
-  return exchangeToken({ userId, accessToken, audience: process.env.MCP_API_AUDIENCE! });
+}): Promise<{ token: string; freshlyExchanged: boolean }> {
+  const cacheRef = firestore().collection('mcpTokenCache').doc(userId);
+  const cached = await cacheRef.get();
+  const cachedToken = cached.data()?.token as string | undefined;
+
+  // 30s leeway so a token that's about to expire mid-request doesn't get
+  // handed to the MCP server only to be rejected there a moment later.
+  if (cachedToken) {
+    const exp = decodeJwtExpiry(cachedToken);
+    if (exp && exp * 1000 > Date.now() + 30_000) {
+      return { token: cachedToken, freshlyExchanged: false };
+    }
+  }
+
+  const token = await exchangeToken({ userId, accessToken, audience: process.env.MCP_API_AUDIENCE! });
+  await cacheRef.set({ token, cachedAt: new Date() });
+  return { token, freshlyExchanged: true };
 }
 
 /**
