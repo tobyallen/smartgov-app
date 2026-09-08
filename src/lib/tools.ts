@@ -68,25 +68,46 @@ export async function submitAppeal(ctx: ToolContext) {
     return { error: 'Denied — either delegation is off, or the appeal window has closed.' };
   }
 
-  const exchangedToken = await exchangeForCaseService({
-    citizenUserId: ctx.citizenUserId,
-    citizenAccessToken: ctx.citizenAccessToken,
-  });
+  // Not allowed to throw past this point: an uncaught rejection here
+  // becomes an uncaught rejection in the MCP tool handler in
+  // api/mcp/route.ts, which the MCP SDK turns into a plain error-message
+  // string in content[0].text - NOT the { result, traceEvents } JSON
+  // shape callMcpTool in the chat routes expects, so JSON.parse there
+  // throws its own unrelated-looking parse error ("Unexpected token
+  // 'O', "OBO token "... is not valid JSON") that hides the real
+  // failure. Every failure from here on returns the same structured
+  // { error } shape the FGA denial above already uses, so the model
+  // treats it the same way: something to explain plainly, not a crash.
+  let exchangedToken: string;
+  try {
+    exchangedToken = await exchangeForCaseService({
+      citizenUserId: ctx.citizenUserId,
+      citizenAccessToken: ctx.citizenAccessToken,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Could not reach the Case Service: ${message}` };
+  }
   ctx.trace({
     kind: 'obo_exchange',
     label: 'Exchanging token to act on your behalf for the Case Service',
     token: exchangedToken,
   });
 
-  const response = await fetch(`${process.env.CASE_SERVICE_URL}/submit-appeal`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${exchangedToken}` },
-    body: JSON.stringify({ caseId: row.id }),
-  });
+  try {
+    const response = await fetch(`${process.env.CASE_SERVICE_URL}/submit-appeal`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${exchangedToken}` },
+      body: JSON.stringify({ caseId: row.id }),
+    });
 
-  if (!response.ok) {
-    return { error: `Case Service denied the request: ${response.status}` };
+    if (!response.ok) {
+      return { error: `Case Service denied the request: ${response.status}` };
+    }
+
+    return { submitted: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Could not reach the Case Service: ${message}` };
   }
-
-  return { submitted: true };
 }

@@ -22,9 +22,32 @@ function buildServer(citizenUserId: string, citizenAccessToken: string) {
   // ignore this field if it doesn't care.
   function withTrace<T>(fn: (trace: (e: TraceEvent) => void) => Promise<T>) {
     const traceEvents: TraceEvent[] = [];
-    return fn((e) => traceEvents.push(e)).then((result) => ({
-      content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
-    }));
+    return fn((e) => traceEvents.push(e))
+      .then((result) => ({
+        content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
+      }))
+      // A tool handler throwing instead of returning { error } - e.g. an
+      // OBO exchange's fetch() failing outright - must not become an
+      // uncaught rejection here: the MCP SDK would turn that into a bare
+      // error-message string in content[0].text, not the { result,
+      // traceEvents } JSON shape callMcpTool in the chat routes expects,
+      // so its JSON.parse throws its own unrelated-looking parse error
+      // ("Unexpected token 'O', "OBO token "... is not valid JSON")
+      // that hides what actually failed. Confirmed live: submit_appeal's
+      // exchangeForCaseService call threw past this point before it was
+      // wrapped in its own try/catch - this is the backstop for that
+      // failure mode and any other tool that doesn't catch its own.
+      .catch((err) => ({
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              result: { error: err instanceof Error ? err.message : String(err) },
+              traceEvents,
+            }),
+          },
+        ],
+      }));
   }
 
   server.registerTool(

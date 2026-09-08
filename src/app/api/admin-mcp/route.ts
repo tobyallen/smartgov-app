@@ -21,9 +21,25 @@ function buildServer(caseworkerUserId: string) {
   // the tool result payload - a callback can't cross the network hop.
   function withTrace<T>(fn: (trace: (e: TraceEvent) => void) => Promise<T>) {
     const traceEvents: TraceEvent[] = [];
-    return fn((e) => traceEvents.push(e)).then((result) => ({
-      content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
-    }));
+    return fn((e) => traceEvents.push(e))
+      .then((result) => ({
+        content: [{ type: 'text' as const, text: JSON.stringify({ result, traceEvents }) }],
+      }))
+      // See src/app/api/mcp/route.ts's withTrace - same backstop, so a
+      // tool handler throwing (rather than returning { error }) can't
+      // turn into a bare error-message string in content[0].text that
+      // breaks the chat routes' JSON.parse on the way back.
+      .catch((err) => ({
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              result: { error: err instanceof Error ? err.message : String(err) },
+              traceEvents,
+            }),
+          },
+        ],
+      }));
   }
 
   server.registerTool(
