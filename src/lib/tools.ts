@@ -105,7 +105,8 @@ export async function submitAppeal(ctx: ToolContext) {
       return { error: `Case Service denied the request: ${response.status}` };
     }
 
-    return { submitted: true };
+    const body = (await response.json()) as { submitted: boolean; alreadySubmitted?: boolean };
+    return body;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { error: `Could not reach the Case Service: ${message}` };

@@ -43,6 +43,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Case not found' }, { status: 404 });
   }
 
+  // A repeat submit_appeal call (e.g. the golden-path button clicked
+  // twice, or the model re-calling the tool per its own system-prompt
+  // instruction to never trust a stale result) would otherwise silently
+  // re-run the FGA check and Firestore write and return the same
+  // { submitted: true } as the first call - confirmed live, with no way
+  // for the citizen or the model to tell "just submitted" apart from
+  // "already submitted a while ago." Checked before the FGA call so a
+  // duplicate doesn't cost a real check/write for no reason.
+  if (row.status === 'appeal_submitted') {
+    return NextResponse.json({ submitted: true, alreadySubmitted: true });
+  }
+
   // Independent FGA check — defense in depth, not a re-run of the
   // upstream decision. If this diverges from the upstream check, that's
   // a real inconsistency to surface, not paper over.

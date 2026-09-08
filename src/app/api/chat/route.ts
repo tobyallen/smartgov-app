@@ -181,7 +181,12 @@ export async function POST(request: NextRequest) {
       'When check_case_status succeeds, present the case summary as a short, friendly ' +
       'sentence or two rather than a raw field-by-field dump - e.g. "Your case is currently ' +
       'open, and was last assessed on 27 August 2026." Mention the case ID only if the ' +
-      'citizen specifically asks for it.',
+      'citizen specifically asks for it. ' +
+      'When submit_appeal succeeds, check its alreadySubmitted field before replying: if ' +
+      'true, tell the citizen an appeal was already submitted previously and is still being ' +
+      "processed - don't congratulate them on submitting a new one, since nothing new " +
+      'happened this time. If alreadySubmitted is absent or false, this genuinely is a new ' +
+      'submission - confirm it plainly.',
     messages: await convertToModelMessages(messages),
     tools: {
       check_case_status: tool({
