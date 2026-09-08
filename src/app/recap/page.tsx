@@ -29,10 +29,13 @@ export default async function RecapPage() {
     <main className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex gap-4 text-sm">
         <Link className="text-blue-600 underline" href="/">Home</Link>
-        <Link className="text-blue-600 underline" href="/case">My case</Link>
-        <Link className="text-blue-600 underline" href="/chat">Chat</Link>
-        {isCaseworker(session) && (
+        {isCaseworker(session) ? (
           <Link className="text-blue-600 underline" href="/admin">Admin console</Link>
+        ) : (
+          <>
+            <Link className="text-blue-600 underline" href="/case">My case</Link>
+            <Link className="text-blue-600 underline" href="/chat">Chat</Link>
+          </>
         )}
         <Link className="text-blue-600 underline" href="/access-log">Access log</Link>
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>

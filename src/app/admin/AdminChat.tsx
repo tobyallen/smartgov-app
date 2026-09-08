@@ -69,10 +69,12 @@ export default function AdminChat() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
+      {/* No "My case" / "Chat" links here - this page only ever renders for
+          a caseworker session (gated server-side in admin/page.tsx), and a
+          caseworker persona has neither a case nor a citizen assistant to
+          link to. */}
       <div className="mb-4 flex gap-4 text-sm">
         <Link className="text-blue-600 underline" href="/">Home</Link>
-        <Link className="text-blue-600 underline" href="/case">My case</Link>
-        <Link className="text-blue-600 underline" href="/chat">Chat</Link>
         <Link className="text-blue-600 underline" href="/access-log">Access log</Link>
         <Link className="text-blue-600 underline" href="/recap">What you just saw</Link>
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>

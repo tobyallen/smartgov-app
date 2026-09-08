@@ -49,12 +49,15 @@ export default async function AccessLogPage() {
     <main className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex gap-4 text-sm">
         <Link className="text-blue-600 underline" href="/">Home</Link>
-        <Link className="text-blue-600 underline" href="/case">My case</Link>
-        <Link className="text-blue-600 underline" href="/chat">Chat</Link>
-        <Link className="text-blue-600 underline" href="/recap">What you just saw</Link>
-        {isCaseworker(session) && (
+        {isCaseworker(session) ? (
           <Link className="text-blue-600 underline" href="/admin">Admin console</Link>
+        ) : (
+          <>
+            <Link className="text-blue-600 underline" href="/case">My case</Link>
+            <Link className="text-blue-600 underline" href="/chat">Chat</Link>
+          </>
         )}
+        <Link className="text-blue-600 underline" href="/recap">What you just saw</Link>
         <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
       </div>
       <h1 className="text-xl font-semibold">Your access log</h1>
