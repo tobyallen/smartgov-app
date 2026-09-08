@@ -2,33 +2,39 @@ import { logOboExchange } from './fga';
 import { firestore } from './firebase-admin';
 
 /**
- * RFC 8693 On-Behalf-Of token exchange. Two call sites, two hops, both
- * real: exchangeForMcp (chat backend -> MCP server) and
- * exchangeForCaseService (MCP tool handler -> downstream case service).
- * Both share this one implementation, parameterized by target audience -
- * same grant, same exchanging identity, different destination.
+ * RFC 8693 On-Behalf-Of token exchange. Two call sites, two hops, and -
+ * despite both being OBO - two DIFFERENT exchanging client identities,
+ * not one shared one. Auth0 requires the client performing an exchange
+ * to have resource_server_identifier equal to the subject token's own
+ * `aud`, independent of the destination audience being requested (see
+ * the "six checks later" post - this field can't be edited after
+ * creation, and is checked against what's already inside the token you
+ * hand in, not where it's headed). exchangeForMcp's subject token is
+ * the citizen's original APP_API_AUDIENCE login token; exchangeForCaseService's
+ * subject token is the ALREADY-EXCHANGED MCP_API_AUDIENCE token the MCP
+ * tool handler is holding by the time submit_appeal runs - two different
+ * `aud` values, so two different clients, each registered as the
+ * resource server matching the token it's actually handed.
  */
 async function exchangeToken({
   userId,
   accessToken,
   audience,
+  clientId,
+  clientSecret,
 }: {
   userId: string;
   accessToken: string;
   audience: string;
+  clientId: string;
+  clientSecret: string;
 }): Promise<string> {
-  // Deliberately NOT the citizen portal's own client credentials: Auth0
-  // requires the entity performing an OBO exchange to be its own
-  // dedicated app_type=resource_server client with
-  // token_exchange.allow_any_profile_of_type enabled — a separate
-  // identity representing "the chatbot backend", distinct from both the
-  // citizen-facing web app and the citizen/caseworker themselves.
   const response = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: process.env.OBO_BACKEND_CLIENT_ID,
-      client_secret: process.env.OBO_BACKEND_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       subject_token: accessToken,
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
@@ -106,7 +112,13 @@ export async function exchangeForMcp({
     }
   }
 
-  const token = await exchangeToken({ userId, accessToken, audience: process.env.MCP_API_AUDIENCE! });
+  const token = await exchangeToken({
+    userId,
+    accessToken,
+    audience: process.env.MCP_API_AUDIENCE!,
+    clientId: process.env.OBO_BACKEND_CLIENT_ID!,
+    clientSecret: process.env.OBO_BACKEND_CLIENT_SECRET!,
+  });
   await cacheRef.set({ token, cachedAt: new Date() });
   return { token, freshlyExchanged: true };
 }
@@ -115,7 +127,15 @@ export async function exchangeForMcp({
  * The inner hop, used only inside submit_appeal's own handler: MCP tool
  * handler -> downstream case service. Distinct from exchangeForMcp above -
  * this one happens a layer deeper, once a tool call has already reached
- * the MCP server, not on every tool call.
+ * the MCP server, not on every tool call. Its subject token is the
+ * MCP_API_AUDIENCE token the tool handler is already holding, not the
+ * citizen's original login token - a different `aud`, so a different
+ * exchanging client identity (OBO_CASE_SERVICE_CLIENT_ID), registered
+ * with resource_server_identifier = MCP_API_AUDIENCE to match it. Using
+ * OBO_BACKEND_CLIENT_ID here (registered for APP_API_AUDIENCE instead)
+ * fails with "This client cannot exchange access tokens for this
+ * audience" even though every client-grant and resource-server setting
+ * checks out - confirmed live, see the "six checks later" post.
  */
 export async function exchangeForCaseService({
   citizenUserId,
@@ -128,5 +148,7 @@ export async function exchangeForCaseService({
     userId: citizenUserId,
     accessToken: citizenAccessToken,
     audience: process.env.CASE_SERVICE_AUDIENCE!,
+    clientId: process.env.OBO_CASE_SERVICE_CLIENT_ID!,
+    clientSecret: process.env.OBO_CASE_SERVICE_CLIENT_SECRET!,
   });
 }

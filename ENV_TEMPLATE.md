@@ -38,12 +38,29 @@ APP_API_AUDIENCE=https://<your-domain>/api
 # grant even when the real problem is a value that doesn't match.
 MCP_API_AUDIENCE=https://<your-domain>/api/mcp
 
-# OBO — dedicated resource_server-type client that performs the token
-# exchange. NOT the same client as the citizen portal above — Auth0
-# requires the exchanging entity to be its own client with
-# token_exchange.allow_any_profile_of_type enabled.
+# OBO — dedicated resource_server-type client that performs the chat
+# backend -> MCP token exchange. NOT the same client as the citizen
+# portal above — Auth0 requires the exchanging entity to be its own
+# client with token_exchange.allow_any_profile_of_type enabled, AND its
+# resource_server_identifier must equal the subject token's own `aud` —
+# here, APP_API_AUDIENCE, since that's the token this hop exchanges.
 OBO_BACKEND_CLIENT_ID=<your OBO backend client ID>
 OBO_BACKEND_CLIENT_SECRET=<fetch via: auth0 apps show <client_id> -r>
+
+# OBO — a SEPARATE dedicated client for the second hop, MCP tool handler
+# -> case service (used only inside submit_appeal). Deliberately not the
+# same client as OBO_BACKEND_CLIENT_ID above, even though both are OBO
+# exchanges: this hop's subject token is the ALREADY-EXCHANGED
+# MCP_API_AUDIENCE token, not the citizen's original login token, so its
+# `aud` is different — and resource_server_identifier can't be edited
+# after a client is created, so a client registered for APP_API_AUDIENCE
+# can never also serve this hop. Confirmed live: reusing
+# OBO_BACKEND_CLIENT_ID here fails with "This client cannot exchange
+# access tokens for this audience" even though the client-grant and
+# resource-server config are otherwise correct — see the "six checks
+# later" blog post for the full mechanism.
+OBO_CASE_SERVICE_CLIENT_ID=<your case-service OBO client ID, resource_server_identifier = MCP_API_AUDIENCE>
+OBO_CASE_SERVICE_CLIENT_SECRET=<fetch via: auth0 apps show <client_id> -r>
 
 # Downstream case-service API
 CASE_SERVICE_AUDIENCE=https://<your-domain>/api/case-service
