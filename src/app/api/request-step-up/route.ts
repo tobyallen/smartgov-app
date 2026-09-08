@@ -24,3 +24,26 @@ export async function POST() {
 
   return NextResponse.json({ approved: true });
 }
+
+/**
+ * Step-down: unlike delegation's revoke (which deletes an FGA tuple),
+ * caseworker_can_bulk_disable is a standing grant gated purely by the
+ * step_up_approved condition (see fga-model.fga) — there's no tuple to
+ * remove, only the approvedAt timestamp the condition reads fresh on
+ * every check. Setting it to the epoch makes the condition fail on the
+ * next check, same effect as a real revoke, without needing a separate
+ * debug-only escape hatch the way delegation's expireDelegationNow does.
+ */
+export async function DELETE() {
+  const session = await auth0.getSession();
+  if (!session || !isCaseworker(session)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  await firestore()
+    .collection('stepUpApprovals')
+    .doc(session.user.sub)
+    .set({ approvedAt: new Date(0) });
+
+  return NextResponse.json({ approved: false });
+}

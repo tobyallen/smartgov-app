@@ -60,6 +60,13 @@ export default function AdminChat() {
     setStepUpPending(false);
   }
 
+  async function stepDown() {
+    setStepUpPending(true);
+    const res = await fetch('/api/request-step-up', { method: 'DELETE' });
+    if (res.ok) setStepUpApprovedAt(null);
+    setStepUpPending(false);
+  }
+
   return (
     <main className="mx-auto max-w-2xl p-4">
       <div className="mb-4 flex gap-4 text-sm">
@@ -102,13 +109,22 @@ export default function AdminChat() {
             <div className="mt-1 text-xs text-green-700">Approved at {stepUpApprovedAt}</div>
           )}
         </div>
-        <button
-          onClick={requestStepUp}
-          disabled={stepUpPending}
-          className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
-        >
-          {stepUpPending ? '...' : 'Request step-up'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={requestStepUp}
+            disabled={stepUpPending}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-40"
+          >
+            {stepUpPending ? '...' : 'Request step-up'}
+          </button>
+          <button
+            onClick={stepDown}
+            disabled={stepUpPending || !stepUpApprovedAt}
+            className="rounded bg-gray-700 px-3 py-1 text-sm text-white disabled:opacity-40"
+          >
+            Step down
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">
