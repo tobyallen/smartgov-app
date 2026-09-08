@@ -14,12 +14,14 @@ type TraceEvent = {
   token?: string;
 };
 
-function TraceCard({ event }: { event: TraceEvent }) {
+function TraceCard({ event, subjectEmail }: { event: TraceEvent; subjectEmail?: string }) {
   if (event.kind === 'obo_exchange') {
     return (
       <div className="my-1 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
         🔁 {event.label}
-        {event.token && <TokenBlock label="Exchanged token" token={event.token} />}
+        {event.token && (
+          <TokenBlock label="Exchanged token" token={event.token} subjectEmail={subjectEmail} />
+        )}
       </div>
     );
   }
@@ -46,6 +48,11 @@ export default function ChatPage() {
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [togglePending, setTogglePending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  // Fetched once so trace cards can annotate the citizen's own sub with
+  // "citizen@atko.email" instead of a bare auth0|... uid - the same
+  // email /api/debug-tokens already exposes for the DebugTokens footer,
+  // reused here rather than adding a second endpoint for the same value.
+  const [subjectEmail, setSubjectEmail] = useState<string | undefined>(undefined);
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
     onFinish: () => refreshDelegation(),
@@ -80,6 +87,13 @@ export default function ChatPage() {
     // needing a chat turn or a page reload to notice.
     const interval = setInterval(refreshDelegation, 15_000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/debug-tokens')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setSubjectEmail(data?.email ?? undefined))
+      .catch(() => setSubjectEmail(undefined));
   }, []);
 
   // Date.now() is impure, so it can't be called during render (React
@@ -207,7 +221,9 @@ export default function ChatPage() {
             ?.traceEvents;
           return (
             <div key={message.id}>
-              {traceEvents?.map((event, i) => <TraceCard key={i} event={event} />)}
+              {traceEvents?.map((event, i) => (
+                <TraceCard key={i} event={event} subjectEmail={subjectEmail} />
+              ))}
               <div className={message.role === 'user' ? 'text-right' : ''}>
                 <div
                   className={`inline-block rounded px-3 py-2 text-sm ${

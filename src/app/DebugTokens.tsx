@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import { TokenBlock } from '@/components/TokenBlock';
 
-type TokenData = { idToken: string | null; accessToken: string; user: Record<string, unknown> };
+type TokenData = {
+  idToken: string | null;
+  accessToken: string;
+  user: Record<string, unknown>;
+  email: string | null;
+};
 
 // Fetches this session's own raw tokens on demand (never on mount, to
 // avoid pulling tokens into the page for every visitor who never opens
@@ -40,11 +45,15 @@ export default function DebugTokens() {
           {data && (
             <>
               {data.idToken ? (
-                <TokenBlock label="ID Token" token={data.idToken} />
+                <TokenBlock label="ID Token" token={data.idToken} subjectEmail={data.email ?? undefined} />
               ) : (
                 <div className="mt-2 text-gray-500">No ID token in session.</div>
               )}
-              <TokenBlock label="Access Token" token={data.accessToken} />
+              <TokenBlock
+                label="Access Token"
+                token={data.accessToken}
+                subjectEmail={data.email ?? undefined}
+              />
             </>
           )}
         </div>

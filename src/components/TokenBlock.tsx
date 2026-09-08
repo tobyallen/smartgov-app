@@ -30,8 +30,14 @@ const CLIENT_DISPLAY_NAMES: Record<string, string> = {
   pk8ytDLT2CtIoxrFFQqKXaUrRdZs2q94: 'SmartGov Chatbot Backend (case-service hop)',
 };
 
-function clientLabel(clientId: string): string {
-  return CLIENT_DISPLAY_NAMES[clientId] ?? clientId;
+// Every "user" sub shown anywhere in this app's tokens is always the
+// current viewer's own uid - there's no page where a citizen's trace
+// cards ever show a DIFFERENT citizen's tokens. So a single optional
+// email (not a map) is enough: pass the viewer's own, and any sub that
+// matches it gets annotated the same way a known client ID does.
+function subjectLabel(sub: string, subjectId?: string, subjectEmail?: string): string {
+  if (subjectEmail && sub === subjectId) return subjectEmail;
+  return CLIENT_DISPLAY_NAMES[sub] ?? sub;
 }
 
 type ActClaim = { sub: string; act?: ActClaim };
@@ -55,7 +61,13 @@ function flattenActChain(act: ActClaim | undefined): string[] {
 // chain at the person being acted for reads left-to-right as "who this
 // is about, then who's carried it, then where it ends up," rather than
 // requiring a separate sentence to say the same thing.
-function TokenHopChain({ claims }: { claims: Record<string, unknown> }) {
+function TokenHopChain({
+  claims,
+  subjectEmail,
+}: {
+  claims: Record<string, unknown>;
+  subjectEmail?: string;
+}) {
   const sub = typeof claims.sub === 'string' ? claims.sub : undefined;
   const aud = typeof claims.aud === 'string' ? claims.aud : undefined;
   const act = claims.act as ActClaim | undefined;
@@ -79,7 +91,7 @@ function TokenHopChain({ claims }: { claims: Record<string, unknown> }) {
                   : 'rounded bg-gray-700 px-1.5 py-0.5 text-white'
             }
           >
-            {i === 0 || i === hops.length - 1 ? id : clientLabel(id)}
+            {i === hops.length - 1 ? id : subjectLabel(id, sub, subjectEmail)}
           </span>
         </span>
       ))}
@@ -89,22 +101,32 @@ function TokenHopChain({ claims }: { claims: Record<string, unknown> }) {
 
 // Renders the same JSON as JSON.stringify would, line by line, but
 // appends a friendly-name badge to any line whose value is a known
-// client ID - so "sub": "xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0" reads
-// alongside "SmartGov Chatbot Backend (v2)" instead of requiring the
-// reader to cross-reference the hop-chain diagram above by eye.
-function AnnotatedClaimsJson({ claims }: { claims: Record<string, unknown> }) {
+// client ID or the current viewer's own subject - so
+// "sub": "xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0" reads alongside "SmartGov
+// Chatbot Backend (v2)", and "sub": "auth0|..." reads alongside
+// "citizen@atko.email", instead of requiring the reader to
+// cross-reference the hop-chain diagram above by eye.
+function AnnotatedClaimsJson({
+  claims,
+  subjectEmail,
+}: {
+  claims: Record<string, unknown>;
+  subjectEmail?: string;
+}) {
+  const sub = typeof claims.sub === 'string' ? claims.sub : undefined;
   const json = JSON.stringify(claims, null, 2);
   const lines = json.split('\n');
+  const knownIds = sub && subjectEmail ? { ...CLIENT_DISPLAY_NAMES, [sub]: subjectEmail } : CLIENT_DISPLAY_NAMES;
   return (
     <>
       {lines.map((line, i) => {
-        const match = Object.keys(CLIENT_DISPLAY_NAMES).find((id) => line.includes(id));
+        const match = Object.keys(knownIds).find((id) => line.includes(id));
         return (
           <div key={i}>
             {line}
             {match && (
               <span className="ml-2 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-white">
-                {CLIENT_DISPLAY_NAMES[match]}
+                {knownIds[match]}
               </span>
             )}
           </div>
@@ -130,7 +152,20 @@ export function chatErrorMessage(error: Error): string {
   return error.message || 'Something went wrong reaching the chat backend.';
 }
 
-export function TokenBlock({ label, token }: { label: string; token: string }) {
+export function TokenBlock({
+  label,
+  token,
+  subjectEmail,
+}: {
+  label: string;
+  token: string;
+  // The current viewer's own email, matched against any `sub` in this
+  // token that equals the token's top-level subject - see subjectLabel
+  // above. Optional because callers that haven't fetched it yet (or a
+  // token belonging to a page with no session, in principle) still get
+  // the bare uid rather than the annotation breaking.
+  subjectEmail?: string;
+}) {
   const claims = decodeJwtPayload(token);
   return (
     <div className="mt-2">
@@ -145,9 +180,9 @@ export function TokenBlock({ label, token }: { label: string; token: string }) {
           View on jwt.io
         </a>
       </div>
-      {claims && <TokenHopChain claims={claims} />}
+      {claims && <TokenHopChain claims={claims} subjectEmail={subjectEmail} />}
       <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
-        {claims ? <AnnotatedClaimsJson claims={claims} /> : '(could not decode)'}
+        {claims ? <AnnotatedClaimsJson claims={claims} subjectEmail={subjectEmail} /> : '(could not decode)'}
       </pre>
       <details className="mt-1">
         <summary className="cursor-pointer text-[11px] text-gray-400">Raw token</summary>

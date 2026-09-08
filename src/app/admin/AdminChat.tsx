@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
@@ -14,12 +14,14 @@ type TraceEvent = {
   token?: string;
 };
 
-function TraceCard({ event }: { event: TraceEvent }) {
+function TraceCard({ event, subjectEmail }: { event: TraceEvent; subjectEmail?: string }) {
   if (event.kind === 'obo_exchange') {
     return (
       <div className="my-1 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
         🔁 {event.label}
-        {event.token && <TokenBlock label="Exchanged token" token={event.token} />}
+        {event.token && (
+          <TokenBlock label="Exchanged token" token={event.token} subjectEmail={subjectEmail} />
+        )}
       </div>
     );
   }
@@ -39,6 +41,17 @@ export default function AdminChat() {
   const [stepUpPending, setStepUpPending] = useState(false);
   const [stepUpApprovedAt, setStepUpApprovedAt] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
+  // See src/app/chat/page.tsx - same one-time email fetch, reused here
+  // so trace cards can annotate the caseworker's own sub instead of a
+  // bare uid.
+  const [subjectEmail, setSubjectEmail] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    fetch('/api/debug-tokens')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setSubjectEmail(data?.email ?? undefined))
+      .catch(() => setSubjectEmail(undefined));
+  }, []);
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/admin-chat' }),
     // Without this, a non-streaming error response (a stale-session 401,
@@ -135,7 +148,9 @@ export default function AdminChat() {
             ?.traceEvents;
           return (
             <div key={message.id}>
-              {traceEvents?.map((event, i) => <TraceCard key={i} event={event} />)}
+              {traceEvents?.map((event, i) => (
+                <TraceCard key={i} event={event} subjectEmail={subjectEmail} />
+              ))}
               <div className={message.role === 'user' ? 'text-right' : ''}>
                 <div
                   className={`inline-block rounded px-3 py-2 text-sm ${
