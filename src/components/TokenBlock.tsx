@@ -50,45 +50,67 @@ function flattenActChain(act: ActClaim | undefined): string[] {
   return chain;
 }
 
-// `sub` names the citizen and never changes across a chain of OBO
-// exchanges - it's not another hop, it's the identity every hop in the
-// `act` chain is acting FOR. Rendering it as a persistent label beside
-// the chain, rather than as a final link in the same row, is what makes
-// that distinction visible instead of implying the citizen is just
-// another party the token passed through.
+// The citizen (`sub`) is the first box, not a caption beside the chain -
+// every later hop is an app acting on their behalf, so starting the
+// chain at the person being acted for reads left-to-right as "who this
+// is about, then who's carried it, then where it ends up," rather than
+// requiring a separate sentence to say the same thing.
 function TokenHopChain({ claims }: { claims: Record<string, unknown> }) {
   const sub = typeof claims.sub === 'string' ? claims.sub : undefined;
   const aud = typeof claims.aud === 'string' ? claims.aud : undefined;
   const act = claims.act as ActClaim | undefined;
   if (!sub) return null;
 
-  // Oldest hop first: where the citizen actually logged in, through
-  // however many exchanges, ending at this token's own destination.
-  const hops = [...flattenActChain(act), aud ?? 'this API'];
+  // Citizen first, then oldest-to-newest app hop, ending at this
+  // token's own destination.
+  const hops = [sub, ...flattenActChain(act), aud ?? 'this API'];
 
   return (
-    <div className="mt-1 space-y-1 text-[11px]">
-      <div className="flex flex-wrap items-center gap-1">
-        {hops.map((id, i) => (
-          <span key={i} className="flex items-center gap-1">
-            {i > 0 && <span className="text-gray-400">→</span>}
-            <span
-              className={
-                i === hops.length - 1
+    <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
+      {hops.map((id, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-gray-400">→</span>}
+          <span
+            className={
+              i === 0
+                ? 'rounded bg-emerald-700 px-1.5 py-0.5 text-white'
+                : i === hops.length - 1
                   ? 'rounded bg-blue-700 px-1.5 py-0.5 text-white'
                   : 'rounded bg-gray-700 px-1.5 py-0.5 text-white'
-              }
-            >
-              {i === hops.length - 1 ? id : clientLabel(id)}
-            </span>
+            }
+          >
+            {i === 0 || i === hops.length - 1 ? id : clientLabel(id)}
           </span>
-        ))}
-      </div>
-      <div className="text-gray-500">
-        Acting for <span className="text-gray-300">{sub}</span> at every hop - the subject never
-        changes, only who&apos;s currently holding the token does.
-      </div>
+        </span>
+      ))}
     </div>
+  );
+}
+
+// Renders the same JSON as JSON.stringify would, line by line, but
+// appends a friendly-name badge to any line whose value is a known
+// client ID - so "sub": "xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0" reads
+// alongside "SmartGov Chatbot Backend (v2)" instead of requiring the
+// reader to cross-reference the hop-chain diagram above by eye.
+function AnnotatedClaimsJson({ claims }: { claims: Record<string, unknown> }) {
+  const json = JSON.stringify(claims, null, 2);
+  const lines = json.split('\n');
+  return (
+    <>
+      {lines.map((line, i) => {
+        const match = Object.keys(CLIENT_DISPLAY_NAMES).find((id) => line.includes(id));
+        return (
+          <div key={i}>
+            {line}
+            {match && (
+              <span className="ml-2 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-white">
+                {CLIENT_DISPLAY_NAMES[match]}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -125,7 +147,7 @@ export function TokenBlock({ label, token }: { label: string; token: string }) {
       </div>
       {claims && <TokenHopChain claims={claims} />}
       <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
-        {claims ? JSON.stringify(claims, null, 2) : '(could not decode)'}
+        {claims ? <AnnotatedClaimsJson claims={claims} /> : '(could not decode)'}
       </pre>
       <details className="mt-1">
         <summary className="cursor-pointer text-[11px] text-gray-400">Raw token</summary>
