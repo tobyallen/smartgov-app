@@ -68,7 +68,7 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
       <div className="flex items-start gap-6">
         {/* AI agent / caseworker console status */}
         <section className="w-80 rounded-xl bg-white p-6 shadow-xl">
-          <h2 className="text-lg font-semibold text-gray-900">Bulk contractor action</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Bulk contractor step-up</h2>
           <p className="text-sm text-gray-500">Human approval required (simulated CIBA)</p>
 
           <div className="my-6 text-center">
@@ -106,7 +106,10 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
           </div>
 
           <div className="rounded-lg bg-gray-100 p-3 font-mono text-xs text-gray-800">
-            <p>Action: bulk_disable_contractors</p>
+            {/* caseworker_can_bulk_disable gates BOTH bulk_disable_contractors and
+                bulk_enable_contractors - see adminTools.ts - so this deliberately
+                doesn't name one direction over the other. */}
+            <p>Action: bulk_disable_contractors / bulk_enable_contractors</p>
             <p>Grant: caseworker_can_bulk_disable</p>
             <p>Condition: step_up_approved</p>
             <p>
@@ -138,9 +141,11 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
               <>
                 <div className="my-5 rounded-xl border p-3">
                   <p className="text-xs uppercase text-gray-500">Your admin console requests</p>
-                  <p className="mt-2 font-semibold text-gray-900">Bulk disable contractors</p>
+                  <p className="mt-2 font-semibold text-gray-900">Bulk contractor action</p>
                   <p className="mt-3 text-xl font-bold text-gray-900">Step-up approval</p>
-                  <p className="text-xs text-gray-500">Required before the bulk action can run</p>
+                  <p className="text-xs text-gray-500">
+                    Required before a bulk enable or bulk disable can run
+                  </p>
                 </div>
 
                 <div className="flex gap-2">

@@ -144,10 +144,10 @@ export default function AdminChat() {
         <div>
           <div className="font-medium">Step-up approval for bulk actions</div>
           <div className="text-xs text-gray-500">
-            Simulates a fresh MFA/CIBA challenge — required before bulk_disable_contractors
-            will succeed, and expires 5 minutes after approval. Clicking below opens a
-            simulated out-of-band approval (not a real Auth0 CIBA request) before the actual
-            step-up is recorded.
+            Simulates a fresh MFA/CIBA challenge — required before bulk_disable_contractors or
+            bulk_enable_contractors will succeed, and expires 5 minutes after approval. Clicking
+            below opens a simulated out-of-band approval (not a real Auth0 CIBA request) before
+            the actual step-up is recorded.
           </div>
           {stepUpApprovedAt && (
             <div className="mt-1 text-xs text-green-700">Approved at {stepUpApprovedAt}</div>
