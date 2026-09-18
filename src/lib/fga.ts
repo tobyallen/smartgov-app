@@ -249,6 +249,30 @@ export async function expireDelegationNow({
 }
 
 /**
+ * The revoke_appeal boundary: unlike submit_appeal (the agent, gated by
+ * delegation + appeal_window), revoking is a citizen action taken
+ * directly, never through the agent — so it checks the plain, unconditional
+ * `owner` relation instead of agent_can_submit_appeal. A citizen can revoke
+ * their own submitted appeal even with delegation off or the appeal window
+ * closed, since owner never expires the way agent_delegate/
+ * agent_can_submit_appeal do.
+ */
+export async function checkOwner({
+  onBehalfOf,
+  caseId,
+}: {
+  onBehalfOf: string;
+  caseId: string;
+}): Promise<boolean> {
+  return checkAndLog({
+    onBehalfOf,
+    actingPrincipal: `user:${onBehalfOf}`,
+    relation: 'owner',
+    object: caseId,
+  });
+}
+
+/**
  * The submit_appeal boundary specifically: delegation must be granted AND
  * the case must still be inside its appeal window. assessmentTime comes
  * from our own `cases` Firestore doc, not from FGA-stored tuple context —

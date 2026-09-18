@@ -6,6 +6,7 @@ import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
 import { chatErrorMessage, TokenBlock } from '@/components/TokenBlock';
+import { CibaApproval } from '@/components/CibaApproval';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -40,6 +41,11 @@ function TraceCard({ event, subjectEmail }: { event: TraceEvent; subjectEmail?: 
 export default function AdminChat() {
   const [stepUpPending, setStepUpPending] = useState(false);
   const [stepUpApprovedAt, setStepUpApprovedAt] = useState<string | null>(null);
+  const [cibaOpen, setCibaOpen] = useState(false);
+  // Bumped on every open so CibaApproval remounts fresh each time
+  // (see that component's comment on why it resets state via remount,
+  // not an effect).
+  const [cibaKey, setCibaKey] = useState(0);
   const [chatError, setChatError] = useState<string | null>(null);
   // See src/app/chat/page.tsx - same one-time email fetch, reused here
   // so trace cards can annotate the caseworker's own sub instead of a
@@ -66,7 +72,20 @@ export default function AdminChat() {
     sendMessage({ text });
   }
 
-  async function requestStepUp() {
+  // Opens the simulated CIBA/mobile-approval modal rather than calling
+  // /api/request-step-up directly — the real POST only fires from
+  // handleCibaComplete, once the simulated out-of-band approval resolves.
+  // See components/CibaApproval.tsx for why this is a simulation, not a
+  // real Auth0 CIBA integration.
+  function requestStepUp() {
+    setCibaKey((k) => k + 1);
+    setCibaOpen(true);
+  }
+
+  async function handleCibaComplete(approved: boolean) {
+    setCibaOpen(false);
+    if (!approved) return;
+
     setStepUpPending(true);
     const res = await fetch('/api/request-step-up', { method: 'POST' });
     if (res.ok) setStepUpApprovedAt(new Date().toLocaleTimeString());
@@ -82,6 +101,14 @@ export default function AdminChat() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
+      {cibaOpen && (
+        <CibaApproval
+          key={cibaKey}
+          onClose={() => setCibaOpen(false)}
+          onComplete={handleCibaComplete}
+        />
+      )}
+
       {/* No "My case" / "Chat" links here - this page only ever renders for
           a caseworker session (gated server-side in admin/page.tsx), and a
           caseworker persona has neither a case nor a citizen assistant to
@@ -118,7 +145,9 @@ export default function AdminChat() {
           <div className="font-medium">Step-up approval for bulk actions</div>
           <div className="text-xs text-gray-500">
             Simulates a fresh MFA/CIBA challenge — required before bulk_disable_contractors
-            will succeed, and expires 5 minutes after approval.
+            will succeed, and expires 5 minutes after approval. Clicking below opens a
+            simulated out-of-band approval (not a real Auth0 CIBA request) before the actual
+            step-up is recorded.
           </div>
           {stepUpApprovedAt && (
             <div className="mt-1 text-xs text-green-700">Approved at {stepUpApprovedAt}</div>

@@ -3,7 +3,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { z } from 'zod';
 import { verifyMcpAccessToken } from '@/lib/mcpAuth';
-import { listContractors, disableContractor, bulkDisableContractors } from '@/lib/adminTools';
+import {
+  listContractors,
+  disableContractor,
+  enableContractor,
+  bulkDisableContractors,
+  bulkEnableContractors,
+} from '@/lib/adminTools';
 import type { TraceEvent } from '@/lib/tools';
 
 // RBAC happens here, at registration time, not at call time: a citizen
@@ -67,6 +73,27 @@ function buildServer(caseworkerUserId: string) {
     },
     async ({ contractorIds }) =>
       withTrace((trace) => bulkDisableContractors({ caseworkerUserId, trace }, contractorIds)),
+  );
+
+  server.registerTool(
+    'enable_contractor',
+    {
+      description: 'Enable (re-activate) a single previously disabled contractor by id.',
+      inputSchema: { contractorId: z.string() },
+    },
+    async ({ contractorId }) =>
+      withTrace((trace) => enableContractor({ caseworkerUserId, trace }, contractorId)),
+  );
+
+  server.registerTool(
+    'bulk_enable_contractors',
+    {
+      description:
+        'Enable multiple contractors at once. Requires a fresh step-up approval via /api/request-step-up.',
+      inputSchema: { contractorIds: z.array(z.string()) },
+    },
+    async ({ contractorIds }) =>
+      withTrace((trace) => bulkEnableContractors({ caseworkerUserId, trace }, contractorIds)),
   );
 
   return server;
