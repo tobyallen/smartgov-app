@@ -55,9 +55,11 @@ export async function POST(request: NextRequest) {
       ? 'list_contractors'
       : lastUserText === 'Disable contractor-1'
         ? 'disable_contractor'
-        : lastUserText === 'Bulk disable contractor-2, contractor-3, and contractor-4'
-          ? 'bulk_disable_contractors'
-          : undefined;
+        : lastUserText === 'Enable contractor-1'
+          ? 'enable_contractor'
+          : lastUserText === 'Bulk disable contractor-2, contractor-3, and contractor-4'
+            ? 'bulk_disable_contractors'
+            : undefined;
 
   // See src/app/api/chat/route.ts for why this can't be allowed to throw
   // unhandled - a failed exchange/connection used to crash the whole
@@ -123,8 +125,8 @@ export async function POST(request: NextRequest) {
     stopWhen: stepCountIs(5),
     system:
       'You are a caseworker assistant for the SmartGov admin console. ' +
-      'You can list contractors, disable one contractor at a time, or bulk-disable ' +
-      'several at once. ' +
+      'You can list contractors, enable or disable one contractor at a time, or ' +
+      'bulk-enable or bulk-disable several at once. ' +
       // See src/app/api/chat/route.ts for why this matters - RBAC, FGA
       // grants, and step-up approval can all change between messages,
       // and the model has no way to know their current state except by
@@ -134,9 +136,10 @@ export async function POST(request: NextRequest) {
       'a request from what a PREVIOUS tool call in this conversation returned. Always call the ' +
       'tool again, every single time, even if an identical request was just denied a moment ago. ' +
       'A tool result may contain an "error" field for two distinct reasons - ' +
-      'treat them differently: if bulk_disable_contractors reports denied ids, or an error ' +
-      'explicitly mentions step-up or authorization, tell the caseworker plainly that step-up ' +
-      'is missing or expired, not that something is broken. If the error instead says ' +
+      'treat them differently: if bulk_disable_contractors or bulk_enable_contractors reports ' +
+      'denied ids, or an error explicitly mentions step-up or authorization, tell the ' +
+      'caseworker plainly that step-up is missing or expired, not that something is broken. ' +
+      'If the error instead says ' +
       'something like "could not reach the MCP server" or "MCP tool call failed", that is a ' +
       'real system/connectivity problem, not a permissions issue - tell the caseworker plainly ' +
       'that something went wrong reaching the admin tools and they should try again, and do ' +
@@ -158,6 +161,11 @@ export async function POST(request: NextRequest) {
         inputSchema: z.object({ contractorId: z.string() }),
         execute: async ({ contractorId }) => callMcpTool('disable_contractor', { contractorId }),
       }),
+      enable_contractor: tool({
+        description: 'Enable (re-activate) a single previously disabled contractor by id.',
+        inputSchema: z.object({ contractorId: z.string() }),
+        execute: async ({ contractorId }) => callMcpTool('enable_contractor', { contractorId }),
+      }),
       bulk_disable_contractors: tool({
         description:
           'Disable multiple contractors at once. Requires a fresh step-up approval — ' +
@@ -165,6 +173,14 @@ export async function POST(request: NextRequest) {
         inputSchema: z.object({ contractorIds: z.array(z.string()) }),
         execute: async ({ contractorIds }) =>
           callMcpTool('bulk_disable_contractors', { contractorIds }),
+      }),
+      bulk_enable_contractors: tool({
+        description:
+          'Enable multiple contractors at once. Requires a fresh step-up approval — ' +
+          'call request_step_up first if this reports denied ids.',
+        inputSchema: z.object({ contractorIds: z.array(z.string()) }),
+        execute: async ({ contractorIds }) =>
+          callMcpTool('bulk_enable_contractors', { contractorIds }),
       }),
     },
     onFinish: async () => {

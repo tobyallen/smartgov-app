@@ -48,6 +48,8 @@ export default function ChatPage() {
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [togglePending, setTogglePending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [revokePending, setRevokePending] = useState(false);
+  const [revokeMessage, setRevokeMessage] = useState<string | null>(null);
   // Fetched once so trace cards can annotate the citizen's own sub with
   // "citizen@atko.email" instead of a bare auth0|... uid - the same
   // email /api/debug-tokens already exposes for the DebugTokens footer,
@@ -127,6 +129,21 @@ export default function ChatPage() {
     // tuple came back denied, because nothing ever reconciled the two.
     if (res.ok) await refreshDelegation();
     setTogglePending(false);
+  }
+
+  // Citizen-direct, not a chat tool: revoking a submitted appeal checks
+  // the plain `owner` relation server-side (see checkOwner in lib/fga.ts),
+  // deliberately never delegated to the assistant the way submit_appeal
+  // is - so this calls /api/revoke-appeal straight from the UI, with no
+  // chat turn or tool call involved. The chat system prompt tells the
+  // model to point citizens here rather than attempt it itself.
+  async function revokeAppeal() {
+    setRevokePending(true);
+    setRevokeMessage(null);
+    const res = await fetch('/api/revoke-appeal', { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    setRevokeMessage(res.ok ? 'Appeal revoked.' : body.error ?? 'Could not revoke the appeal.');
+    setRevokePending(false);
   }
 
   // Debug-only: forces the delegation_window condition to fail on the
@@ -257,7 +274,28 @@ export default function ChatPage() {
         >
           Submit an appeal
         </button>
+        {/* Deliberately outside the chat flow, styled distinctly from the
+            golden-path buttons above - clicking this calls
+            /api/revoke-appeal directly, with no chat turn, no tool call,
+            and no agent involved (see revokeAppeal above). */}
+        <button
+          onClick={revokeAppeal}
+          disabled={revokePending}
+          className="rounded border border-gray-500 px-3 py-1 text-sm text-gray-700 disabled:opacity-40 dark:text-gray-300"
+        >
+          {revokePending ? '...' : 'Revoke appeal'}
+        </button>
       </div>
+      <p className="mt-1 text-xs text-gray-500">
+        Revoking is something only you can do directly - your assistant can&apos;t revoke an
+        appeal on your behalf, even with delegation granted.
+      </p>
+
+      {revokeMessage && (
+        <div className="mt-2 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+          {revokeMessage}
+        </div>
+      )}
 
       {chatError && (
         <div className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">

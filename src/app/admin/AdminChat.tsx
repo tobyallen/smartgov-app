@@ -214,6 +214,13 @@ export default function AdminChat() {
           Disable a contractor
         </button>
         <button
+          onClick={() => send('Enable contractor-1')}
+          disabled={status !== 'ready'}
+          className="rounded border border-blue-600 px-3 py-1 text-blue-600 disabled:opacity-40 dark:text-blue-400"
+        >
+          Enable a contractor
+        </button>
+        <button
           onClick={() => send('Bulk disable contractor-2, contractor-3, and contractor-4')}
           disabled={status !== 'ready'}
           className="rounded border border-blue-600 px-3 py-1 text-blue-600 disabled:opacity-40 dark:text-blue-400"

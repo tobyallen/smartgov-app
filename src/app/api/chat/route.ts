@@ -186,7 +186,13 @@ export async function POST(request: NextRequest) {
       'true, tell the citizen an appeal was already submitted previously and is still being ' +
       "processed - don't congratulate them on submitting a new one, since nothing new " +
       'happened this time. If alreadySubmitted is absent or false, this genuinely is a new ' +
-      'submission - confirm it plainly.',
+      'submission - confirm it plainly. ' +
+      'You have no tool to revoke, rescind, or withdraw a submitted appeal, and you must ' +
+      'never claim to have done so or imply it might already be handled. This is deliberate, ' +
+      'not a missing feature to apologize for: revoking is something only the citizen can do ' +
+      'directly, never something delegated to you, even with full delegation granted. If asked ' +
+      'to revoke, rescind, withdraw, cancel, or undo an appeal, say plainly that you cannot do ' +
+      'this yourself, and tell them to use the "Revoke appeal" button on this page instead.',
     messages: await convertToModelMessages(messages),
     tools: {
       check_case_status: tool({
