@@ -152,6 +152,23 @@ export function chatErrorMessage(error: Error): string {
   return error.message || 'Something went wrong reaching the chat backend.';
 }
 
+// Amazon Nova Pro (via the AI Gateway/Bedrock) occasionally refuses an
+// entirely benign request - confirmed live on "bulk disable
+// contractor-2, contractor-3, and contractor-4," the app's own golden-path
+// button text - with this exact literal string as its "answer," not as a
+// thrown error or a distinct finishReason the AI SDK exposes. streamText
+// has no way to tell this apart from a real answer; it's normal assistant
+// text as far as the SDK is concerned. Checked here, client-side, once a
+// message is complete, purely so the chat UI can render it as a retry
+// prompt instead of a normal reply - this is model flakiness on ambiguous
+// phrasing, not a real policy violation or an app bug, so the fix is
+// presentation, not authorization or backend logic.
+const MODEL_CONTENT_FILTER_REFUSAL = 'blocked by our content filters';
+
+export function isModelContentFilterRefusal(text: string): boolean {
+  return text.toLowerCase().includes(MODEL_CONTENT_FILTER_REFUSAL);
+}
+
 export function TokenBlock({
   label,
   token,

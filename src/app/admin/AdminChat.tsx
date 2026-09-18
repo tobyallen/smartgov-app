@@ -5,7 +5,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
-import { chatErrorMessage, TokenBlock } from '@/components/TokenBlock';
+import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
 import { CibaApproval } from '@/components/CibaApproval';
 
 type TraceEvent = {
@@ -175,24 +175,41 @@ export default function AdminChat() {
         {messages.map((message) => {
           const traceEvents = (message.metadata as { traceEvents?: TraceEvent[] } | undefined)
             ?.traceEvents;
+          const text = message.parts
+            .filter((p) => p.type === 'text')
+            .map((p) => p.text)
+            .join('');
+          // See isModelContentFilterRefusal in TokenBlock.tsx - this is
+          // model flakiness on benign phrasing, not a real answer, so it's
+          // rendered as a retry prompt rather than a normal reply bubble.
+          const isRefusal = message.role === 'assistant' && isModelContentFilterRefusal(text);
           return (
             <div key={message.id}>
               {traceEvents?.map((event, i) => (
                 <TraceCard key={i} event={event} subjectEmail={subjectEmail} />
               ))}
-              <div className={message.role === 'user' ? 'text-right' : ''}>
-                <div
-                  className={`inline-block rounded px-3 py-2 text-sm ${
-                    message.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
-                  }`}
-                >
-                  {message.parts.map((part, i) =>
-                    part.type === 'text' ? <span key={i}>{part.text}</span> : null,
-                  )}
+              {isRefusal ? (
+                <div className="my-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  The model refused this request for reasons unrelated to your actual
+                  permissions — this looks like a false positive on the wording, not a real
+                  policy issue. Try rephrasing, or use the golden-path buttons below instead of
+                  free-form text.
                 </div>
-              </div>
+              ) : (
+                <div className={message.role === 'user' ? 'text-right' : ''}>
+                  <div
+                    className={`inline-block rounded px-3 py-2 text-sm ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                    }`}
+                  >
+                    {message.parts.map((part, i) =>
+                      part.type === 'text' ? <span key={i}>{part.text}</span> : null,
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
