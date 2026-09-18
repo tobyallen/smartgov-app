@@ -4,11 +4,16 @@ import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
 import Link from 'next/link';
 
+// status_change is only ever produced by logAppealRevoked (lib/fga.ts)
+// today - if a second status_change use appears, this label needs to
+// read detail.note instead of assuming every status_change means the
+// same thing.
 const LABELS: Record<string, string> = {
   check: 'Access check',
   tuple_write: 'Delegation granted',
   tuple_delete: 'Delegation revoked',
   obo_exchange: 'Cross-service token exchange',
+  status_change: 'Appeal revoked',
 };
 
 export default async function AccessLogPage() {

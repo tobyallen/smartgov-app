@@ -273,6 +273,35 @@ export async function checkOwner({
 }
 
 /**
+ * Logs the actual revoke ACTION, separate from checkOwner's authorization
+ * check above - without this, revoking an appeal and simply viewing the
+ * case page produce identical access-log entries (both eventType: 'check',
+ * relation: 'owner', on the same case), with no way to tell "I looked at
+ * my case" apart from "I revoked my appeal." Mirrors how a delegation
+ * grant/revoke already gets its own tuple_write/tuple_delete eventType,
+ * distinct from the checks that gate it.
+ */
+export async function logAppealRevoked({
+  onBehalfOf,
+  caseId,
+}: {
+  onBehalfOf: string;
+  caseId: string;
+}) {
+  await firestore().collection('auditEvents').add({
+    onBehalfOf,
+    eventType: 'status_change',
+    actingPrincipal: `user:${onBehalfOf}`,
+    relation: 'owner',
+    object: caseId,
+    context: null,
+    decision: null,
+    detail: { note: 'appeal revoked', from: 'appeal_submitted', to: 'open' },
+    createdAt: new Date(),
+  });
+}
+
+/**
  * The submit_appeal boundary specifically: delegation must be granted AND
  * the case must still be inside its appeal window. assessmentTime comes
  * from our own `cases` Firestore doc, not from FGA-stored tuple context —

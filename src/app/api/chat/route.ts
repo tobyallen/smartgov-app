@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
       'not a missing feature to apologize for: revoking is something only the citizen can do ' +
       'directly, never something delegated to you, even with full delegation granted. If asked ' +
       'to revoke, rescind, withdraw, cancel, or undo an appeal, say plainly that you cannot do ' +
-      'this yourself, and tell them to use the "Revoke appeal" button on this page instead.',
+      'this yourself, and tell them to use the "Revoke appeal" button on their case page instead.',
     messages: await convertToModelMessages(messages),
     tools: {
       check_case_status: tool({

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
-import { checkOwner } from '@/lib/fga';
+import { checkOwner, logAppealRevoked } from '@/lib/fga';
 import { caseIdFor, findCaseByCitizen } from '@/lib/provisioning';
 import { firestore } from '@/lib/firebase-admin';
 
@@ -28,6 +28,7 @@ export async function POST() {
   }
 
   await firestore().collection('cases').doc(row.id).update({ status: 'open' });
+  await logAppealRevoked({ onBehalfOf: citizenUserId, caseId: caseIdFor(row.id) });
 
   return NextResponse.json({ revoked: true });
 }

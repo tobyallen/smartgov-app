@@ -3,6 +3,7 @@ import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
 import { isCaseworker } from '@/lib/roles';
 import OneTimeNote from '@/components/OneTimeNote';
+import { RevokeAppealButton } from '@/components/RevokeAppealButton';
 import Link from 'next/link';
 
 // Pulled out of the component body so the render function itself stays
@@ -68,6 +69,7 @@ export default async function CasePage() {
         <div>
           <dt className="text-gray-500">Status</dt>
           <dd>{fresh?.status}</dd>
+          {fresh?.status === 'appeal_submitted' && <RevokeAppealButton />}
         </div>
         <div>
           <dt className="text-gray-500">Assessment date</dt>
