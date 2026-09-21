@@ -6,6 +6,7 @@ import { DefaultChatTransport } from 'ai';
 import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
 import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
+import { ChatMessageText } from '@/components/ChatMessageText';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -249,7 +250,7 @@ export default function ChatPage() {
                     }`}
                   >
                     {message.parts.map((part, i) =>
-                      part.type === 'text' ? <span key={i}>{part.text}</span> : null,
+                      part.type === 'text' ? <ChatMessageText key={i} text={part.text} /> : null,
                     )}
                   </div>
                 </div>
