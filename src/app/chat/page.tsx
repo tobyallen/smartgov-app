@@ -179,21 +179,25 @@ export default function ChatPage() {
           <button
             onClick={() => !delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || delegated}
-            className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-40"
+            className="w-36 rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-40"
           >
             Grant delegation
           </button>
           <button
             onClick={() => delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || !delegated}
-            className="rounded bg-gray-700 px-3 py-1 text-sm text-white disabled:opacity-40"
+            className="w-36 rounded bg-gray-700 px-3 py-1 text-sm text-white disabled:opacity-40"
           >
             Revoke delegation
           </button>
           <span
-            className={`rounded px-3 py-1 text-sm ${delegated ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}
+            className={`w-36 rounded px-3 py-1 text-center text-sm ${delegated ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}
           >
-            {togglePending ? '...' : delegated ? 'Delegated' : 'Not delegated'}
+            {/* Fixed label per state, not the transient "..." - the
+            box's own width (matching the two buttons above) is what
+            already communicates "in flight," so it doesn't also need
+            to change size or text mid-request. */}
+            {delegated ? 'Delegated' : 'Not delegated'}
           </span>
         </div>
       </div>

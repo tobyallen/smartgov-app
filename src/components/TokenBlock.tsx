@@ -28,7 +28,7 @@ export function jwtIoUrl(token: string) {
 // rather than hiding an unrecognised hop.
 const CLIENT_DISPLAY_NAMES: Record<string, string> = {
   zS9EnPkBdrI0QXfQ73XKMKr7oCnKRNj0: 'SmartGov Citizen Portal',
-  xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0: 'SmartGov Chatbot Backend (v2)',
+  xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0: 'Chatbot Backend',
   pk8ytDLT2CtIoxrFFQqKXaUrRdZs2q94: 'SmartGov Chatbot Backend (case-service hop)',
   // Auth0 Agent as Principal (EA) — act.sub shows the external_agent_id set
   // at registration, not a client ID, once agent_subject_claims: 'auth0-v1'
