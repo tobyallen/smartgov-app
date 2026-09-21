@@ -17,6 +17,11 @@ export type TraceEvent = {
 export type ToolContext = {
   citizenUserId: string;
   citizenAccessToken: string; // needed only by submitAppeal, for the OBO exchange
+  // Real Auth0 agent identity (act.sub) from the incoming MCP request's
+  // token, verified in mcpAuth.ts - logged alongside every FGA check as a
+  // token-integrity signal, separate from agentIdFor()'s per-citizen FGA
+  // principal. null pre-EA or when the caller's token lacks act.sub.
+  verifiedActor: string | null;
   trace: (event: TraceEvent) => void;
 };
 
@@ -39,6 +44,7 @@ export async function checkCaseStatus(ctx: ToolContext) {
     agentId,
     caseId,
     delegationGrantedAt: row.delegationGrantedAt,
+    verifiedActor: ctx.verifiedActor,
   });
   ctx.trace({ kind: 'fga_check', label: `agent_delegate on ${caseId}`, allowed });
 
@@ -61,6 +67,7 @@ export async function submitAppeal(ctx: ToolContext) {
     agentId,
     caseId,
     assessmentTime: row.assessmentTime,
+    verifiedActor: ctx.verifiedActor,
   });
   ctx.trace({ kind: 'fga_check', label: `agent_can_submit_appeal on ${caseId}`, allowed });
 

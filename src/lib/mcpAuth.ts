@@ -16,9 +16,25 @@ const JWKS = createRemoteJWKSet(new URL(`https://${process.env.AUTH0_DOMAIN}/.we
 
 const PERSONA_CLAIM = 'https://smartgov.apidays/persona';
 
+// external_agent_id values set on the two registered Auth0 agents (see
+// auth0-agents-setup notes) - one per OBO hop, not per citizen. Real
+// per-hop identity is a token-integrity/audit signal ("was this request
+// genuinely proxied through the expected backend service"), separate
+// from FGA's per-citizen agentIdFor() delegation principal.
+export const EXPECTED_CHATBOT_BACKEND_AGENT = 'smartgov-chatbot-backend';
+export const EXPECTED_CASE_SERVICE_AGENT = 'smartgov-case-service-caller';
+
 export type VerifiedMcpCaller = {
   userId: string;
   persona: 'citizen' | 'caseworker';
+  // Real Auth0 agent identity from the token's `act.sub` claim (set once
+  // agent_subject_claims: 'auth0-v1' is enabled on this resource server -
+  // see auth0-agents-setup notes). null on a token issued before that was
+  // enabled, or from a tenant without the Agent as Principal EA feature -
+  // callers should fall back to the app-constructed agentIdFor() string
+  // for FGA purposes either way; this is a token-integrity signal, not a
+  // new FGA principal.
+  verifiedActor: string | null;
 };
 
 export async function verifyMcpAccessToken(request: NextRequest): Promise<VerifiedMcpCaller | null> {
@@ -34,7 +50,9 @@ export async function verifyMcpAccessToken(request: NextRequest): Promise<Verifi
     const userId = payload.sub;
     if (!userId) return null;
     const persona = payload[PERSONA_CLAIM] === 'caseworker' ? 'caseworker' : 'citizen';
-    return { userId, persona };
+    const act = payload.act as { sub?: string } | undefined;
+    const verifiedActor = typeof act?.sub === 'string' ? act.sub : null;
+    return { userId, persona, verifiedActor };
   } catch (err) {
     // Deliberately logged, not silently swallowed - a bare catch{} here
     // turned every possible validation failure (wrong audience, expired

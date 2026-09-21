@@ -38,6 +38,11 @@ type CheckArgs = {
   relation: string;
   object: string;
   context?: Record<string, unknown>;
+  // Real Auth0 agent identity from the request token's act.sub claim
+  // (see lib/mcpAuth.ts) - a token-integrity signal logged alongside the
+  // FGA decision, not itself an FGA principal. null when the token
+  // predates agent_subject_claims or came from a tenant without it.
+  verifiedActor?: string | null;
 };
 
 /**
@@ -52,6 +57,7 @@ export async function checkAndLog({
   relation,
   object,
   context,
+  verifiedActor,
 }: CheckArgs): Promise<boolean> {
   let decision: boolean;
   try {
@@ -84,6 +90,7 @@ export async function checkAndLog({
     context: context ?? null,
     decision,
     detail: null,
+    verifiedActor: verifiedActor ?? null,
     createdAt: new Date(),
   });
 
@@ -193,11 +200,13 @@ export async function checkDelegation({
   agentId,
   caseId,
   delegationGrantedAt,
+  verifiedActor,
 }: {
   onBehalfOf: string;
   agentId: string;
   caseId: string;
   delegationGrantedAt: Date | null;
+  verifiedActor?: string | null;
 }): Promise<boolean> {
   return checkAndLog({
     onBehalfOf,
@@ -208,6 +217,7 @@ export async function checkDelegation({
       current_time: new Date().toISOString(),
       granted_at: (delegationGrantedAt ?? new Date(0)).toISOString(),
     },
+    verifiedActor,
   });
 }
 
@@ -312,11 +322,13 @@ export async function checkAppealWindow({
   agentId,
   caseId,
   assessmentTime,
+  verifiedActor,
 }: {
   onBehalfOf: string;
   agentId: string;
   caseId: string;
   assessmentTime: Date;
+  verifiedActor?: string | null;
 }): Promise<boolean> {
   return checkAndLog({
     onBehalfOf,
@@ -327,6 +339,7 @@ export async function checkAppealWindow({
       current_time: new Date().toISOString(),
       assessment_time: assessmentTime.toISOString(),
     },
+    verifiedActor,
   });
 }
 

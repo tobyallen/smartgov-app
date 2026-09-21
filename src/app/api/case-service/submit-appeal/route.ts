@@ -3,6 +3,7 @@ import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { firestore } from '@/lib/firebase-admin';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, agentIdFor, findCaseById } from '@/lib/provisioning';
+import { EXPECTED_CASE_SERVICE_AGENT } from '@/lib/mcpAuth';
 
 // The downstream "case service" — deliberately a separate API identity
 // (Custom API / resource server in Auth0) from the main app, so the OBO
@@ -30,11 +31,20 @@ export async function POST(request: NextRequest) {
   }
 
   // `sub` is the citizen (identity preserved through the exchange); `act`
-  // identifies the agent that performed the exchange on their behalf.
+  // identifies the agent that performed the exchange on their behalf -
+  // act.sub is a real Auth0 agent_id/external_agent_id once
+  // agent_subject_claims: 'auth0-v1' is enabled on this resource server
+  // (see auth0-agents-setup notes), not an app-invented string.
   const citizenUserId = claims.sub as string;
   const actingAs = claims.act as { sub?: string } | undefined;
   if (!actingAs) {
     return NextResponse.json({ error: 'Token is not a delegated (act) token' }, { status: 403 });
+  }
+  const verifiedActor = typeof actingAs.sub === 'string' ? actingAs.sub : null;
+  if (verifiedActor && verifiedActor !== EXPECTED_CASE_SERVICE_AGENT) {
+    console.error(
+      `Case Service request act.sub (${verifiedActor}) does not match expected agent (${EXPECTED_CASE_SERVICE_AGENT})`,
+    );
   }
 
   const { caseId: caseRowId } = await request.json();
@@ -67,6 +77,7 @@ export async function POST(request: NextRequest) {
       current_time: new Date().toISOString(),
       assessment_time: row.assessmentTime.toISOString(),
     },
+    verifiedActor,
   });
 
   if (!allowed) {

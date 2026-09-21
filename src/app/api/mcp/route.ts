@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { verifyMcpAccessToken } from '@/lib/mcpAuth';
+import { verifyMcpAccessToken, EXPECTED_CHATBOT_BACKEND_AGENT } from '@/lib/mcpAuth';
 import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
 
 // A real, standards-compliant MCP server (Streamable HTTP over Web
@@ -9,7 +9,7 @@ import { checkCaseStatus, submitAppeal, type TraceEvent } from '@/lib/tools';
 // deprecated HTTP+SSE one) wrapping the same tool handlers the in-app
 // chat uses. Any MCP client can point at this endpoint; it isn't
 // presenter-only or chat-only.
-function buildServer(citizenUserId: string, citizenAccessToken: string) {
+function buildServer(citizenUserId: string, citizenAccessToken: string, verifiedActor: string | null) {
   const server = new McpServer({ name: 'smartgov-case-mcp', version: '1.0.0' });
 
   // Every check still lands in the shared auditEvents table regardless of
@@ -54,14 +54,14 @@ function buildServer(citizenUserId: string, citizenAccessToken: string) {
     'check_case_status',
     { description: "Check the status of the caller's own case." },
     async () =>
-      withTrace((trace) => checkCaseStatus({ citizenUserId, citizenAccessToken, trace })),
+      withTrace((trace) => checkCaseStatus({ citizenUserId, citizenAccessToken, verifiedActor, trace })),
   );
 
   server.registerTool(
     'submit_appeal',
     { description: "Submit a formal appeal for the caller's own case." },
     async () =>
-      withTrace((trace) => submitAppeal({ citizenUserId, citizenAccessToken, trace })),
+      withTrace((trace) => submitAppeal({ citizenUserId, citizenAccessToken, verifiedActor, trace })),
   );
 
   return server;
@@ -76,9 +76,21 @@ export async function POST(request: NextRequest) {
   const caller = await verifyMcpAccessToken(request);
   if (!caller) return new Response('Unauthorized', { status: 401 });
 
+  // Real Auth0 agent identity check — separate from FGA's per-citizen
+  // agentIdFor() delegation principal (see mcpAuth.ts). Doesn't gate the
+  // request (a token lacking act.sub is still valid — pre-EA tenants,
+  // direct MCP clients that aren't this app's own chat backend), but a
+  // present-and-wrong actor is worth surfacing since it means something
+  // other than the expected backend service proxied this request.
+  if (caller.verifiedActor && caller.verifiedActor !== EXPECTED_CHATBOT_BACKEND_AGENT) {
+    console.error(
+      `MCP request act.sub (${caller.verifiedActor}) does not match expected agent (${EXPECTED_CHATBOT_BACKEND_AGENT})`,
+    );
+  }
+
   const authHeader = request.headers.get('authorization')!;
   const token = authHeader.slice('Bearer '.length);
-  const server = buildServer(caller.userId, token);
+  const server = buildServer(caller.userId, token, caller.verifiedActor);
   // Stateless mode: no session ID, matching the "short request/response
   // tool calls" concurrency model — no persistent connection to manage
   // across 100 attendees.

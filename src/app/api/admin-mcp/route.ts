@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { z } from 'zod';
-import { verifyMcpAccessToken } from '@/lib/mcpAuth';
+import { verifyMcpAccessToken, EXPECTED_CHATBOT_BACKEND_AGENT } from '@/lib/mcpAuth';
 import {
   listContractors,
   disableContractor,
@@ -109,6 +109,11 @@ export async function POST(request: NextRequest) {
   if (!caller) return new Response('Unauthorized', { status: 401 });
   if (caller.persona !== 'caseworker') {
     return new Response('Forbidden — caseworker role required', { status: 403 });
+  }
+  if (caller.verifiedActor && caller.verifiedActor !== EXPECTED_CHATBOT_BACKEND_AGENT) {
+    console.error(
+      `Admin MCP request act.sub (${caller.verifiedActor}) does not match expected agent (${EXPECTED_CHATBOT_BACKEND_AGENT})`,
+    );
   }
 
   const server = buildServer(caller.userId);

@@ -46,6 +46,7 @@ export default async function AccessLogPage() {
       context: data.context ?? null,
       decision: data.decision ?? null,
       detail: data.detail ?? null,
+      verifiedActor: data.verifiedActor ?? null,
       createdAt: data.createdAt.toDate(),
     };
   });
@@ -86,6 +87,11 @@ export default async function AccessLogPage() {
                 </span>
               )}
             </div>
+            {e.verifiedActor && (
+              <div className="text-xs text-gray-400">
+                token-verified actor: {e.verifiedActor}
+              </div>
+            )}
           </li>
         ))}
       </ul>

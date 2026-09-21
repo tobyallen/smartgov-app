@@ -40,6 +40,10 @@ export type AuditEventRecord = {
   context: Record<string, unknown> | null;
   decision: boolean | null;
   detail: Record<string, unknown> | null;
+  // Real Auth0 agent identity (act.sub) verified from the request token,
+  // distinct from actingPrincipal above (FGA's per-citizen agentIdFor()
+  // string) - see lib/mcpAuth.ts. null pre-EA or when absent from the token.
+  verifiedActor: string | null;
   createdAt: Date;
 };
 
