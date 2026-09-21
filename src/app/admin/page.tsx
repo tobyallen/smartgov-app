@@ -1,8 +1,11 @@
+import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { isCaseworker } from '@/lib/roles';
 import { ensureCaseworkerProvisioned } from '@/lib/provisioning';
 import AdminChat from './AdminChat';
 import Link from 'next/link';
+
+export const metadata: Metadata = { title: 'Admin Console' };
 
 // RBAC check happens server-side, before any client component ever
 // mounts — a citizen hitting this URL directly gets a plain, honest

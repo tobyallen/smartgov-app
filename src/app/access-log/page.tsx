@@ -1,8 +1,11 @@
+import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { firestore } from '@/lib/firebase-admin';
 import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
 import Link from 'next/link';
+
+export const metadata: Metadata = { title: 'Access Log' };
 
 // status_change is only ever produced by logAppealRevoked (lib/fga.ts)
 // today - if a second status_change use appears, this label needs to

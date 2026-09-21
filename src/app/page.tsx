@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { isCaseworker, personaFor } from '@/lib/roles';
+
+export const metadata: Metadata = { title: 'Home' };
 
 export default async function Home({
   searchParams,

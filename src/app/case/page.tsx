@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
@@ -5,6 +6,8 @@ import { isCaseworker } from '@/lib/roles';
 import OneTimeNote from '@/components/OneTimeNote';
 import { RevokeAppealButton } from '@/components/RevokeAppealButton';
 import Link from 'next/link';
+
+export const metadata: Metadata = { title: 'My Case' };
 
 // Pulled out of the component body so the render function itself stays
 // pure (no direct Date.now() call during render) - createdAt within the

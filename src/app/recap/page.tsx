@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { firestore } from '@/lib/firebase-admin';
 import { isCaseworker } from '@/lib/roles';
 import Link from 'next/link';
+
+export const metadata: Metadata = { title: 'Recap' };
 
 export default async function RecapPage() {
   const session = await auth0.getSession();
