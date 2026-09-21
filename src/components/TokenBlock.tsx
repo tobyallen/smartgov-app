@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 // Shared by DebugTokens (the citizen's own session tokens) and the chat
 // trace cards (the OBO-exchanged tokens minted per-request in lib/obo.ts)
 // - same decode/display/jwt.io-link logic either way, only the source of
@@ -28,6 +30,13 @@ const CLIENT_DISPLAY_NAMES: Record<string, string> = {
   zS9EnPkBdrI0QXfQ73XKMKr7oCnKRNj0: 'SmartGov Citizen Portal',
   xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0: 'SmartGov Chatbot Backend (v2)',
   pk8ytDLT2CtIoxrFFQqKXaUrRdZs2q94: 'SmartGov Chatbot Backend (case-service hop)',
+  // Auth0 Agent as Principal (EA) — act.sub shows the external_agent_id set
+  // at registration, not a client ID, once agent_subject_claims: 'auth0-v1'
+  // is enabled on the resource server (see mcpAuth.ts). A distinct name
+  // space from the client-id map above, so both are checked by the same
+  // lookup rather than needing the caller to know which kind of id it is.
+  'smartgov-chatbot-backend': 'Agent: SmartGov Chatbot Backend',
+  'smartgov-case-service-caller': 'Agent: SmartGov Case Service Caller',
 };
 
 // Every "user" sub shown anywhere in this app's tokens is always the
@@ -40,17 +49,21 @@ function subjectLabel(sub: string, subjectId?: string, subjectEmail?: string): s
   return CLIENT_DISPLAY_NAMES[sub] ?? sub;
 }
 
-type ActClaim = { sub: string; act?: ActClaim };
+type ActClaim = { sub: string; sub_profile?: string; act?: ActClaim };
+type Hop = { id: string; isAgent: boolean };
 
 // The `act` claim nests once per OBO exchange, outermost = most recent.
 // Flattening it into an ordered array (oldest hop first) is what makes
 // it renderable as a left-to-right chain instead of a JSON tree the
-// reader has to mentally invert.
-function flattenActChain(act: ActClaim | undefined): string[] {
-  const chain: string[] = [];
+// reader has to mentally invert. sub_profile: 'ai_agent' (set once
+// agent_subject_claims: 'auth0-v1' is enabled - see mcpAuth.ts) is what
+// lets the chain badge a real registered Auth0 agent identity
+// differently from an ordinary client/app hop.
+function flattenActChain(act: ActClaim | undefined): Hop[] {
+  const chain: Hop[] = [];
   let current = act;
   while (current) {
-    chain.unshift(current.sub);
+    chain.unshift({ id: current.sub, isAgent: current.sub_profile === 'ai_agent' });
     current = current.act;
   }
   return chain;
@@ -75,11 +88,15 @@ function TokenHopChain({
 
   // Citizen first, then oldest-to-newest app hop, ending at this
   // token's own destination.
-  const hops = [sub, ...flattenActChain(act), aud ?? 'this API'];
+  const hops: Hop[] = [
+    { id: sub, isAgent: false },
+    ...flattenActChain(act),
+    { id: aud ?? 'this API', isAgent: false },
+  ];
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
-      {hops.map((id, i) => (
+      {hops.map((hop, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <span className="text-gray-400">→</span>}
           <span
@@ -88,10 +105,13 @@ function TokenHopChain({
                 ? 'rounded bg-emerald-700 px-1.5 py-0.5 text-white'
                 : i === hops.length - 1
                   ? 'rounded bg-blue-700 px-1.5 py-0.5 text-white'
-                  : 'rounded bg-gray-700 px-1.5 py-0.5 text-white'
+                  : hop.isAgent
+                    ? 'rounded bg-purple-700 px-1.5 py-0.5 text-white'
+                    : 'rounded bg-gray-700 px-1.5 py-0.5 text-white'
             }
           >
-            {i === hops.length - 1 ? id : subjectLabel(id, sub, subjectEmail)}
+            {hop.isAgent && <span className="mr-1 text-[9px] uppercase tracking-wide text-purple-200">agent</span>}
+            {i === hops.length - 1 ? hop.id : subjectLabel(hop.id, sub, subjectEmail)}
           </span>
         </span>
       ))}
@@ -184,21 +204,41 @@ export function TokenBlock({
   subjectEmail?: string;
 }) {
   const claims = decodeJwtPayload(token);
+  // Collapsed by default (matches the previous fixed-height behaviour) -
+  // expanded removes the max-height/scroll clamp so the full decoded
+  // payload (e.g. a nested act chain several hops deep) is visible
+  // without needing to scroll a tiny fixed box.
+  const [expanded, setExpanded] = useState(false);
   return (
     <div className="mt-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="font-medium">{label}</div>
-        <a
-          href={jwtIoUrl(token)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
-        >
-          View on jwt.io
-        </a>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
+          >
+            {expanded ? 'Collapse' : 'Expand'}
+          </button>
+          <a
+            href={jwtIoUrl(token)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
+          >
+            View on jwt.io
+          </a>
+        </div>
       </div>
       {claims && <TokenHopChain claims={claims} subjectEmail={subjectEmail} />}
-      <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
+      <pre
+        className={
+          expanded
+            ? 'mt-1 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300'
+            : 'mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300'
+        }
+      >
         {claims ? <AnnotatedClaimsJson claims={claims} subjectEmail={subjectEmail} /> : '(could not decode)'}
       </pre>
       <details className="mt-1">
