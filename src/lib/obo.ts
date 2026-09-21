@@ -49,6 +49,12 @@ async function exchangeToken({
 
   const { access_token } = (await response.json()) as { access_token: string };
 
+  // TEMP verification log for the agent_subject_claims rollout — remove once confirmed.
+  try {
+    const payload = JSON.parse(Buffer.from(access_token.split('.')[1], 'base64url').toString('utf8'));
+    console.log('[obo-verify]', audience, JSON.stringify({ sub: payload.sub, sub_profile: payload.sub_profile, act: payload.act }));
+  } catch {}
+
   // Logged separately from the FGA checks either side of it — this is
   // the event the "cross-service" trace card renders from. detail.audience
   // is what lets two exchanges in the same turn (chat->MCP, then
