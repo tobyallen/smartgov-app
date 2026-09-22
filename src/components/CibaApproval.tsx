@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Logo } from '@/components/Logo';
 
 type ApprovalState = 'waiting' | 'phone' | 'approved' | 'denied';
 
@@ -74,7 +75,7 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
           <div className="my-6 text-center">
             {state === 'waiting' && (
               <>
-                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
                 <p className="mt-3 font-medium text-gray-900">Awaiting approval...</p>
                 <p className="text-sm text-gray-500">Sending request to the caseworker&apos;s phone</p>
               </>
@@ -90,16 +91,16 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
 
             {state === 'approved' && (
               <>
-                <div className="text-4xl text-green-600">✓</div>
-                <p className="font-medium text-green-600">Approved</p>
+                <div className="text-4xl text-status-good">✓</div>
+                <p className="font-medium text-status-good">Approved</p>
                 <p className="text-sm text-gray-500">Recording step-up approval...</p>
               </>
             )}
 
             {state === 'denied' && (
               <>
-                <div className="text-4xl text-red-600">×</div>
-                <p className="font-medium text-red-600">Denied</p>
+                <div className="text-4xl text-status-critical">×</div>
+                <p className="font-medium text-status-critical">Denied</p>
                 <p className="text-sm text-gray-500">Step-up was not approved</p>
               </>
             )}
@@ -130,8 +131,8 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
         {(state === 'phone' || state === 'approved' || state === 'denied') && (
           <section className="w-64 rounded-[2rem] border-8 border-gray-900 bg-white p-4 shadow-2xl">
             <div className="text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-black text-sm font-bold text-white">
-                SG
+              <div className="mx-auto mb-3">
+                <Logo size={48} className="bg-black text-white" />
               </div>
               <h3 className="font-semibold text-gray-900">SmartGov</h3>
               <p className="text-xs text-gray-500">Caseworker approval</p>
@@ -151,7 +152,7 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
                 <div className="flex gap-2">
                   <button
                     onClick={deny}
-                    className="flex-1 rounded-lg border border-red-600 px-3 py-2 text-red-600"
+                    className="flex-1 rounded-lg border border-status-critical px-3 py-2 text-status-critical"
                   >
                     Deny
                   </button>
@@ -166,14 +167,14 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
             )}
 
             {state === 'approved' && (
-              <div className="py-10 text-center text-green-600">
+              <div className="py-10 text-center text-status-good">
                 <div className="text-5xl">✓</div>
                 <p className="mt-3 font-semibold">Approved</p>
               </div>
             )}
 
             {state === 'denied' && (
-              <div className="py-10 text-center text-red-600">
+              <div className="py-10 text-center text-status-critical">
                 <div className="text-5xl">×</div>
                 <p className="mt-3 font-semibold">Denied</p>
               </div>

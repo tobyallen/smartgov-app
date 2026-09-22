@@ -39,9 +39,9 @@ export function DevResetPanel() {
   }
 
   return (
-    <div className="mt-4 space-y-3 rounded border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950">
+    <div className="mt-4 space-y-3 rounded border border-status-warning/40 bg-status-warning/10 p-4 text-sm">
       <div>
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300" htmlFor="targetUserId">
+        <label className="block text-xs font-medium text-ink-secondary" htmlFor="targetUserId">
           Target user ID (Auth0 sub) — leave blank to reset your own account
         </label>
         <input
@@ -50,10 +50,10 @@ export function DevResetPanel() {
           value={targetUserId}
           onChange={(e) => setTargetUserId(e.target.value)}
           placeholder="auth0|..."
-          className="mt-1 w-full rounded border px-2 py-1 text-sm"
+          className="mt-1 w-full rounded border border-surface-hairline px-2 py-1 text-sm"
         />
       </div>
-      <label className="flex items-center gap-2 text-xs">
+      <label className="flex items-center gap-2 text-xs text-ink-secondary">
         <input
           type="checkbox"
           checked={resetContractors}
@@ -64,11 +64,11 @@ export function DevResetPanel() {
       <button
         onClick={submit}
         disabled={pending}
-        className="rounded border border-amber-600 px-3 py-1 text-sm font-medium text-amber-900 disabled:opacity-40 dark:text-amber-100"
+        className="rounded border border-status-warning px-3 py-1 text-sm font-medium text-ink-primary disabled:opacity-40"
       >
         {pending ? '...' : 'Run reset'}
       </button>
-      {result && <p className="text-xs">{result}</p>}
+      {result && <p className="text-xs text-ink-secondary">{result}</p>}
     </div>
   );
 }

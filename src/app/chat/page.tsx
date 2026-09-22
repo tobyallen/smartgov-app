@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import Link from 'next/link';
 import OneTimeNote from '@/components/OneTimeNote';
 import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
 import { ChatMessageText } from '@/components/ChatMessageText';
+import { AppNav, type NavLink } from '@/components/AppNav';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -18,7 +18,7 @@ type TraceEvent = {
 function TraceCard({ event, subjectEmail }: { event: TraceEvent; subjectEmail?: string }) {
   if (event.kind === 'obo_exchange') {
     return (
-      <div className="my-1 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+      <div className="my-1 rounded border border-brand-primary/30 bg-brand-primary/10 px-3 py-2 text-xs text-ink-primary">
         🔁 {event.label}
         {event.token && (
           <TokenBlock label="Exchanged token" token={event.token} subjectEmail={subjectEmail} />
@@ -30,7 +30,7 @@ function TraceCard({ event, subjectEmail }: { event: TraceEvent; subjectEmail?: 
   return (
     <div
       className={`my-1 rounded border px-3 py-2 text-xs ${
-        ok ? 'border-green-300 bg-green-50 text-green-900' : 'border-red-300 bg-red-50 text-red-900'
+        ok ? 'border-status-good/40 bg-status-good/10 text-ink-primary' : 'border-status-critical/40 bg-status-critical/10 text-ink-primary'
       }`}
     >
       ⚙ FGA check: {event.label} → {ok ? 'ALLOWED' : 'DENIED'}
@@ -141,17 +141,19 @@ export default function ChatPage() {
     setTogglePending(false);
   }
 
+  const navLinks: NavLink[] = [
+    { label: 'Home', href: '/' },
+    { label: 'My case', href: '/case' },
+    { label: 'Access log', href: '/access-log' },
+    { label: 'Log out', href: '/auth/logout', role: 'destructive' },
+  ];
+
   return (
     <main className="mx-auto max-w-2xl p-4">
-      <div className="mb-4 flex gap-4 text-sm">
-        <Link className="text-blue-600 underline" href="/">Home</Link>
-        <Link className="text-blue-600 underline" href="/case">My case</Link>
-        <Link className="text-blue-600 underline" href="/access-log">Access log</Link>
-        <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
-      </div>
+      <AppNav links={navLinks} />
 
       <OneTimeNote step="chat-delegation-explainer-seen">
-        <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+        <p className="mb-3 text-sm text-ink-secondary">
           Your assistant doesn&apos;t automatically inherit your access to your own data -
           it&apos;s a separate identity, and until you grant it a scoped permission below, every
           request it makes on your behalf will be denied. You can revoke that permission at any
@@ -161,10 +163,10 @@ export default function ChatPage() {
         </p>
       </OneTimeNote>
 
-      <div className="mb-4 flex items-center justify-between rounded border p-3">
+      <div className="mb-4 flex items-center justify-between rounded border border-surface-hairline p-3">
         <div>
-          <div className="font-medium">Allow my AI assistant to access this case</div>
-          <div className="text-xs text-gray-500">
+          <div className="font-medium text-ink-primary">Allow my AI assistant to access this case</div>
+          <div className="text-xs text-ink-muted">
             You can always see your own case — this only controls what your assistant can see.
             {delegated && minutesRemaining !== null && (
               <span className="ml-1">
@@ -179,19 +181,19 @@ export default function ChatPage() {
           <button
             onClick={() => !delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || delegated}
-            className="w-24 rounded bg-green-600 px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
+            className="w-24 rounded bg-status-good px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
           >
             Grant delegation
           </button>
           <button
             onClick={() => delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || !delegated}
-            className="w-24 rounded bg-gray-700 px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
+            className="w-24 rounded bg-ink-secondary px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
           >
             Revoke delegation
           </button>
           <span
-            className={`w-24 rounded px-2 py-1 text-center text-sm leading-tight ${delegated ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}
+            className={`w-24 rounded px-2 py-1 text-center text-sm leading-tight ${delegated ? 'bg-status-good/15 text-status-good' : 'bg-ink-secondary/15 text-ink-secondary'}`}
           >
             {/* Fixed label per state, not the transient "..." - the
             box's own size (matching the two buttons above) is what
@@ -203,7 +205,7 @@ export default function ChatPage() {
       </div>
 
       {delegated && (
-        <div className="mb-4 flex items-center justify-between rounded border border-dashed p-2 text-xs text-gray-500">
+        <div className="mb-4 flex items-center justify-between rounded border border-dashed border-surface-hairline p-2 text-xs text-ink-muted">
           <span>
             <strong>Presenter tool, not part of the citizen flow:</strong> fast-forwards the clock
             on the same grant above, so you can show the 15-minute window lapsing on its own
@@ -213,7 +215,7 @@ export default function ChatPage() {
           <button
             onClick={debugExpireNow}
             disabled={togglePending || status !== 'ready'}
-            className="ml-2 shrink-0 rounded border border-gray-400 px-2 py-1 text-gray-700 disabled:opacity-40 dark:text-gray-300"
+            className="ml-2 shrink-0 rounded border border-surface-hairline px-2 py-1 text-ink-secondary disabled:opacity-40"
           >
             Fast-forward to expiry
           </button>
@@ -238,7 +240,7 @@ export default function ChatPage() {
                 <TraceCard key={i} event={event} subjectEmail={subjectEmail} />
               ))}
               {isRefusal ? (
-                <div className="my-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <div className="my-1 rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-ink-primary">
                   The model refused this request for reasons unrelated to your actual
                   permissions — this looks like a false positive on the wording, not a real
                   policy issue. Try rephrasing, or use the buttons below instead of free-form
@@ -249,8 +251,8 @@ export default function ChatPage() {
                   <div
                     className={`inline-block rounded px-3 py-2 text-sm ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                        ? 'bg-brand-primary text-white'
+                        : 'bg-ink-secondary/10 text-ink-primary'
                     }`}
                   >
                     {message.parts.map((part, i) =>
@@ -268,21 +270,21 @@ export default function ChatPage() {
         <button
           onClick={() => send('Ask for my case summary')}
           disabled={status !== 'ready'}
-          className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+          className="rounded border border-brand-primary px-3 py-1 text-sm text-brand-primary disabled:opacity-40"
         >
           Ask for my case summary
         </button>
         <button
           onClick={() => send('Submit an appeal for my case')}
           disabled={status !== 'ready'}
-          className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+          className="rounded border border-brand-primary px-3 py-1 text-sm text-brand-primary disabled:opacity-40"
         >
           Submit an appeal
         </button>
       </div>
 
       {chatError && (
-        <div className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+        <div className="mt-2 rounded border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-ink-primary">
           {chatError}
         </div>
       )}
@@ -298,8 +300,16 @@ export default function ChatPage() {
           }
         }}
       >
-        <input name="message" className="flex-1 rounded border px-3 py-2" placeholder="Ask about your case..." />
-        <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white" disabled={status !== 'ready'}>
+        <input
+          name="message"
+          className="flex-1 rounded border border-surface-hairline px-3 py-2"
+          placeholder="Ask about your case..."
+        />
+        <button
+          type="submit"
+          className="rounded bg-brand-primary px-4 py-2 text-white hover:bg-brand-primary-hover"
+          disabled={status !== 'ready'}
+        >
           Send
         </button>
       </form>

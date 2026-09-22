@@ -98,7 +98,7 @@ function TokenHopChain({
     <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
       {hops.map((hop, i) => (
         <span key={i} className="flex items-center gap-1">
-          {i > 0 && <span className="text-gray-400">→</span>}
+          {i > 0 && <span className="text-ink-muted">→</span>}
           <span
             className={
               i === 0
@@ -145,7 +145,7 @@ function AnnotatedClaimsJson({
           <div key={i}>
             {line}
             {match && (
-              <span className="ml-2 rounded bg-gray-700 px-1.5 py-0.5 text-[10px] text-white">
+              <span className="ml-2 rounded bg-ink-secondary px-1.5 py-0.5 text-[10px] text-white">
                 {knownIds[match]}
               </span>
             )}
@@ -212,12 +212,12 @@ export function TokenBlock({
   return (
     <div className="mt-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="font-medium">{label}</div>
+        <div className="font-medium text-ink-primary">{label}</div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
+            className="rounded bg-ink-secondary px-2 py-1 text-xs text-white hover:bg-ink-primary"
           >
             {expanded ? 'Collapse' : 'Expand'}
           </button>
@@ -225,7 +225,7 @@ export function TokenBlock({
             href={jwtIoUrl(token)}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded bg-gray-700 px-2 py-1 text-xs text-white hover:bg-gray-600"
+            className="rounded bg-ink-secondary px-2 py-1 text-xs text-white hover:bg-ink-primary"
           >
             View on jwt.io
           </a>
@@ -235,15 +235,15 @@ export function TokenBlock({
       <pre
         className={
           expanded
-            ? 'mt-1 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300'
-            : 'mt-1 max-h-40 overflow-auto rounded bg-black/80 p-2 text-[11px] text-green-300'
+            ? 'mt-1 overflow-auto rounded bg-black p-2 text-[11px] text-status-good'
+            : 'mt-1 max-h-40 overflow-auto rounded bg-black p-2 text-[11px] text-status-good'
         }
       >
         {claims ? <AnnotatedClaimsJson claims={claims} subjectEmail={subjectEmail} /> : '(could not decode)'}
       </pre>
       <details className="mt-1">
-        <summary className="cursor-pointer text-[11px] text-gray-400">Raw token</summary>
-        <div className="mt-1 break-all rounded bg-black/80 p-2 text-[10px] text-gray-300">{token}</div>
+        <summary className="cursor-pointer text-[11px] text-ink-muted">Raw token</summary>
+        <div className="mt-1 break-all rounded bg-black p-2 text-[10px] text-ink-muted">{token}</div>
       </details>
     </div>
   );

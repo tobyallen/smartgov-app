@@ -31,23 +31,23 @@ export default function DebugTokens() {
   }, [open, data]);
 
   return (
-    <div className="mt-auto border-t bg-gray-50 text-xs text-gray-800">
+    <div className="mt-auto border-t border-surface-hairline bg-ink-secondary/5 text-xs text-ink-secondary">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full px-4 py-2 text-left font-mono text-gray-500 hover:bg-gray-100"
+        className="w-full px-4 py-2 text-left font-mono text-ink-muted hover:bg-ink-secondary/10"
       >
         {open ? '▾' : '▸'} debug: id/access tokens
       </button>
       {open && (
         <div className="max-w-3xl px-4 pb-4">
-          {error && <div className="text-red-600">{error}</div>}
-          {!error && !data && <div className="text-gray-500">Loading…</div>}
+          {error && <div className="text-status-critical">{error}</div>}
+          {!error && !data && <div className="text-ink-muted">Loading…</div>}
           {data && (
             <>
               {data.idToken ? (
                 <TokenBlock label="ID Token" token={data.idToken} subjectEmail={data.email ?? undefined} />
               ) : (
-                <div className="mt-2 text-gray-500">No ID token in session.</div>
+                <div className="mt-2 text-ink-muted">No ID token in session.</div>
               )}
               <TokenBlock
                 label="Access Token"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { auth0 } from '@/lib/auth0';
 import { isCaseworker, personaFor } from '@/lib/roles';
+import { AppNav, type NavLink } from '@/components/AppNav';
 
 export const metadata: Metadata = { title: 'Home' };
 
@@ -28,39 +29,43 @@ export default async function Home({
   const personaMismatch =
     session && attemptedPersona && attemptedPersona !== actualPersona;
 
+  const navLinks: NavLink[] = session
+    ? [
+        ...(isCaseworker(session)
+          ? [{ label: 'Admin console', href: '/admin' }]
+          : [
+              { label: 'My case', href: '/case' },
+              { label: 'Chat with my assistant', href: '/chat' },
+            ]),
+        { label: 'Access log', href: '/access-log' },
+        { label: 'What you just saw', href: '/recap' },
+        { label: 'Log out', href: '/auth/logout', role: 'destructive' as const },
+      ]
+    : [];
+
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-2xl font-semibold">SmartGov Citizen Portal</h1>
-      <p className="mt-2 text-sm text-gray-600">
+      {session && <AppNav links={navLinks} />}
+      <h1 className="text-2xl font-semibold text-ink-primary">SmartGov Citizen Portal</h1>
+      <p className="mt-2 text-sm text-ink-secondary">
         Sovereign Intelligence: your AI assistant only sees what you explicitly let it see —
         and every decision is checked, not assumed.
       </p>
       {personaMismatch && (
-        <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        <div className="mt-4 rounded border border-status-warning bg-status-warning/10 px-3 py-2 text-sm text-ink-primary">
           You&apos;re signed in as a <strong>{actualPersona}</strong>, not a{' '}
           <strong>{attemptedPersona}</strong> - a persona is fixed to an account the moment it
           first signs up, and doesn&apos;t change on a later login even if you click the other
-          button. To try the {attemptedPersona} side, <a className="underline" href="/auth/logout">log out</a>{' '}
+          button. To try the {attemptedPersona} side,{' '}
+          <a className="text-ink-secondary underline hover:text-ink-primary" href="/auth/logout">
+            log out
+          </a>{' '}
           and sign up again with a different email as a {attemptedPersona}.
         </div>
       )}
-      {session ? (
-        <div className="mt-6 flex gap-4 text-sm">
-          {isCaseworker(session) ? (
-            <a className="text-blue-600 underline" href="/admin">Admin console</a>
-          ) : (
-            <>
-              <a className="text-blue-600 underline" href="/case">My case</a>
-              <a className="text-blue-600 underline" href="/chat">Chat with my assistant</a>
-            </>
-          )}
-          <a className="text-blue-600 underline" href="/access-log">Access log</a>
-          <a className="text-blue-600 underline" href="/recap">What you just saw</a>
-          <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
-        </div>
-      ) : (
+      {!session && (
         <div className="mt-6">
-          <p className="text-sm text-gray-700 dark:text-gray-300">
+          <p className="text-sm text-ink-secondary">
             This is a live demo, not a slide. Sign up with any email - even a throwaway one,
             nothing here is real - and pick a role below. You&apos;ll see your AI assistant get
             checked against a real authorisation model on every single request it makes on your
@@ -70,12 +75,12 @@ export default async function Home({
           <div className="mt-4 flex flex-col gap-4 sm:flex-row">
             <div>
               <a
-                className="inline-block rounded bg-blue-600 px-4 py-2 text-sm text-white"
+                className="inline-block rounded bg-brand-primary px-4 py-2 text-sm text-white hover:bg-brand-primary-hover"
                 href="/auth/login?persona=citizen&returnTo=%2F%3FattemptedPersona%3Dcitizen"
               >
                 Continue as a citizen
               </a>
-              <p className="mt-1 max-w-xs text-xs text-gray-500">
+              <p className="mt-1 max-w-xs text-xs text-ink-muted">
                 Sign up for your own case and control what your AI assistant is allowed to see.
                 Already have a caseworker account? Use a different email - a persona is fixed to
                 an account for good at signup.
@@ -83,12 +88,12 @@ export default async function Home({
             </div>
             <div>
               <a
-                className="inline-block rounded bg-gray-700 px-4 py-2 text-sm text-white"
+                className="inline-block rounded bg-ink-secondary px-4 py-2 text-sm text-white hover:bg-ink-primary"
                 href="/auth/login?persona=caseworker&returnTo=%2F%3FattemptedPersona%3Dcaseworker"
               >
                 Continue as a caseworker
               </a>
-              <p className="mt-1 max-w-xs text-xs text-gray-500">
+              <p className="mt-1 max-w-xs text-xs text-ink-muted">
                 Sign up with access to the admin tool surface. Already have a citizen account?
                 Use a different email - a persona is fixed to an account for good at signup.
               </p>

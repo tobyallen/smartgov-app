@@ -7,7 +7,7 @@ import { isCaseworker } from '@/lib/roles';
 import OneTimeNote from '@/components/OneTimeNote';
 import { RevokeAppealButton } from '@/components/RevokeAppealButton';
 import { ResetMyDataButton } from '@/components/ResetMyDataButton';
-import Link from 'next/link';
+import { AppNav, type NavLink } from '@/components/AppNav';
 
 export const metadata: Metadata = { title: 'My Case' };
 
@@ -24,7 +24,7 @@ export default async function CasePage() {
   if (!session) {
     return (
       <main className="p-6">
-        <a href="/auth/login" className="text-blue-600 underline">
+        <a href="/auth/login" className="text-brand-primary underline hover:text-brand-primary-hover">
           Log in to view your case
         </a>
       </main>
@@ -68,11 +68,20 @@ export default async function CasePage() {
   // first-time visitor what that brief redirect pause was actually doing.
   const justProvisioned = wasJustProvisioned(fresh?.createdAt);
 
+  const navLinks: NavLink[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Talk to your assistant', href: '/chat' },
+    { label: 'View access log', href: '/access-log' },
+    { label: 'What you just saw', href: '/recap' },
+    { label: 'Log out', href: '/auth/logout', role: 'destructive' },
+  ];
+
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-semibold">Your case</h1>
+      <AppNav links={navLinks} />
+      <h1 className="text-xl font-semibold text-ink-primary">Your case</h1>
       <OneTimeNote step="case-provisioning-note-seen" initiallyEligible={justProvisioned}>
-        <p className="mt-2 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100">
+        <p className="mt-2 rounded border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm text-ink-primary">
           While you were signing up, this app set up your case record and granted your AI
           assistant&apos;s starting permissions - the same kind of check every request it makes
           will go through from now on.
@@ -80,27 +89,29 @@ export default async function CasePage() {
       </OneTimeNote>
       <dl className="mt-4 space-y-2 text-sm">
         <div>
-          <dt className="text-gray-500">Case ID</dt>
+          <dt className="text-ink-muted">Case ID</dt>
           <dd>{fresh?.id}</dd>
         </div>
         <div>
-          <dt className="text-gray-500">Status</dt>
+          <dt className="text-ink-muted">Status</dt>
           <dd>{fresh?.status}</dd>
           {fresh?.status === 'appeal_submitted' && <RevokeAppealButton />}
         </div>
         <div>
-          <dt className="text-gray-500">Assessment date</dt>
+          <dt className="text-ink-muted">Assessment date</dt>
           <dd>{fresh?.assessmentTime.toDateString()}</dd>
         </div>
       </dl>
 
       <OneTimeNote step="case-fga-explainer-seen">
-        <p className="mt-6 text-sm text-gray-700 dark:text-gray-300">
+        <p className="mt-6 text-sm text-ink-secondary">
           Every time your assistant answers a question about this case, it makes a real API call
           that&apos;s checked against{' '}
           <a
-            className="text-blue-600 underline"
+            className="text-brand-primary underline hover:text-brand-primary-hover inline-flex items-center gap-1"
             href="https://auth0.com/docs/secure/fine-grained-authorization"
+            target="_blank"
+            rel="noreferrer"
           >
             Auth0 FGA
           </a>{' '}
@@ -113,16 +124,16 @@ export default async function CasePage() {
         </p>
       </OneTimeNote>
 
-      <details className="mt-3 rounded border p-3 text-sm">
-        <summary className="cursor-pointer font-medium">
+      <details className="mt-3 rounded border border-surface-hairline p-3 text-sm">
+        <summary className="cursor-pointer font-medium text-ink-primary">
           What would an insecure version look like?
         </summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
-            <div className="mb-1 text-xs font-medium text-green-700 dark:text-green-400">
+            <div className="mb-1 text-xs font-medium text-status-good">
               What this app actually does
             </div>
-            <pre className="overflow-x-auto rounded bg-black/80 p-2 text-[11px] text-green-300">
+            <pre className="overflow-x-auto rounded bg-black p-2 text-[11px] text-status-good">
 {`await checkAndLog({
   onBehalfOf: citizenUserId,
   actingPrincipal: \`agent:\${userId}-assistant\`,
@@ -133,10 +144,10 @@ export default async function CasePage() {
             </pre>
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium text-red-700 dark:text-red-400">
+            <div className="mb-1 text-xs font-medium text-status-critical">
               What an over-privileged service credential would look like instead
             </div>
-            <pre className="overflow-x-auto rounded bg-black/80 p-2 text-[11px] text-red-300">
+            <pre className="overflow-x-auto rounded bg-black p-2 text-[11px] text-status-critical">
 {`// never executed anywhere in this app
 db.query.cases.findFirst({
   where: eq(cases.citizenUserId, targetUserId),
@@ -148,25 +159,7 @@ db.query.cases.findFirst({
         </div>
       </details>
 
-      <div className="mt-6 flex gap-4 text-sm">
-        <Link className="text-blue-600 underline" href="/">
-          Home
-        </Link>
-        <Link className="text-blue-600 underline" href="/chat">
-          Talk to your assistant
-        </Link>
-        <Link className="text-blue-600 underline" href="/access-log">
-          View access log
-        </Link>
-        <Link className="text-blue-600 underline" href="/recap">
-          What you just saw
-        </Link>
-        <a className="text-blue-600 underline" href="/auth/logout">
-          Log out
-        </a>
-      </div>
-
-      <div className="mt-6 border-t pt-4">
+      <div className="mt-6 border-t border-surface-hairline pt-4">
         <ResetMyDataButton />
       </div>
     </main>

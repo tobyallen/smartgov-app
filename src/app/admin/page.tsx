@@ -3,7 +3,7 @@ import { auth0 } from '@/lib/auth0';
 import { isCaseworker } from '@/lib/roles';
 import { ensureCaseworkerProvisioned } from '@/lib/provisioning';
 import AdminChat from './AdminChat';
-import Link from 'next/link';
+import { AppNav } from '@/components/AppNav';
 
 export const metadata: Metadata = { title: 'Admin Console' };
 
@@ -15,7 +15,7 @@ export default async function AdminPage() {
   if (!session) {
     return (
       <main className="p-6">
-        <a href="/auth/login" className="text-blue-600 underline">
+        <a href="/auth/login" className="text-brand-primary underline hover:text-brand-primary-hover">
           Log in to view the admin console
         </a>
       </main>
@@ -25,13 +25,15 @@ export default async function AdminPage() {
   if (!isCaseworker(session)) {
     return (
       <main className="mx-auto max-w-2xl p-6">
-        <div className="mb-4 flex gap-4 text-sm">
-          <Link className="text-blue-600 underline" href="/">Home</Link>
-          <Link className="text-blue-600 underline" href="/case">My case</Link>
-          <Link className="text-blue-600 underline" href="/chat">Chat</Link>
-        </div>
-        <h1 className="text-xl font-semibold">Not available</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <AppNav
+          links={[
+            { label: 'Home', href: '/' },
+            { label: 'My case', href: '/case' },
+            { label: 'Chat', href: '/chat' },
+          ]}
+        />
+        <h1 className="text-xl font-semibold text-ink-primary">Not available</h1>
+        <p className="mt-2 text-sm text-ink-secondary">
           The admin console is only available to caseworker accounts. You&apos;re signed in as a
           citizen — this isn&apos;t a system error, it&apos;s the same RBAC check that keeps
           citizen sessions from ever seeing the contractor-management tools.

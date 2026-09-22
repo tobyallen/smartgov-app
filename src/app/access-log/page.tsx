@@ -3,7 +3,7 @@ import { auth0 } from '@/lib/auth0';
 import { firestore } from '@/lib/firebase-admin';
 import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
-import Link from 'next/link';
+import { AppNav, type NavLink } from '@/components/AppNav';
 
 export const metadata: Metadata = { title: 'Access Log' };
 
@@ -24,7 +24,7 @@ export default async function AccessLogPage() {
   if (!session) {
     return (
       <main className="p-6">
-        <a href="/auth/login" className="text-blue-600 underline">
+        <a href="/auth/login" className="text-brand-primary underline hover:text-brand-primary-hover">
           Log in to view your access log
         </a>
       </main>
@@ -54,44 +54,44 @@ export default async function AccessLogPage() {
     };
   });
 
+  const navLinks: NavLink[] = [
+    { label: 'Home', href: '/' },
+    ...(isCaseworker(session)
+      ? [{ label: 'Admin console', href: '/admin' }]
+      : [
+          { label: 'My case', href: '/case' },
+          { label: 'Chat', href: '/chat' },
+        ]),
+    { label: 'What you just saw', href: '/recap' },
+    { label: 'Log out', href: '/auth/logout', role: 'destructive' as const },
+  ];
+
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <div className="mb-4 flex gap-4 text-sm">
-        <Link className="text-blue-600 underline" href="/">Home</Link>
-        {isCaseworker(session) ? (
-          <Link className="text-blue-600 underline" href="/admin">Admin console</Link>
-        ) : (
-          <>
-            <Link className="text-blue-600 underline" href="/case">My case</Link>
-            <Link className="text-blue-600 underline" href="/chat">Chat</Link>
-          </>
-        )}
-        <Link className="text-blue-600 underline" href="/recap">What you just saw</Link>
-        <a className="text-blue-600 underline" href="/auth/logout">Log out</a>
-      </div>
-      <h1 className="text-xl font-semibold">Your access log</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <AppNav links={navLinks} />
+      <h1 className="text-xl font-semibold text-ink-primary">Your access log</h1>
+      <p className="mt-1 text-sm text-ink-muted">
         Every time your case was viewed or your assistant tried to act on your behalf, deterministically
         checked and recorded here — not inferred from a chat transcript.
       </p>
       <ul className="mt-4 space-y-2 text-sm">
         {events.map((e) => (
-          <li key={e.id} className="rounded border px-3 py-2">
+          <li key={e.id} className="rounded border border-surface-hairline px-3 py-2">
             <div className="flex justify-between">
-              <span className="font-medium">{LABELS[e.eventType] ?? e.eventType}</span>
-              <span className="text-gray-400">{e.createdAt.toLocaleTimeString()}</span>
+              <span className="font-medium text-ink-primary">{LABELS[e.eventType] ?? e.eventType}</span>
+              <span className="text-ink-muted">{e.createdAt.toLocaleTimeString()}</span>
             </div>
-            <div className="text-gray-600">
+            <div className="text-ink-secondary">
               {e.actingPrincipal} {e.relation ? `→ ${e.relation}` : ''} {e.object ? `on ${e.object}` : ''}
               {e.decision !== null && (
-                <span className={e.decision ? 'text-green-700' : 'text-red-700'}>
+                <span className={e.decision ? 'text-status-good' : 'text-status-critical'}>
                   {' '}
                   — {e.decision ? 'allowed' : 'denied'}
                 </span>
               )}
             </div>
             {e.verifiedActor && (
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-ink-muted">
                 token-verified actor: {e.verifiedActor}
               </div>
             )}

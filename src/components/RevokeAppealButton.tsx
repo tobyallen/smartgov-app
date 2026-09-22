@@ -36,16 +36,16 @@ export function RevokeAppealButton() {
       <button
         onClick={revokeAppeal}
         disabled={pending}
-        className="rounded border border-gray-500 px-3 py-1 text-sm text-gray-700 disabled:opacity-40 dark:text-gray-300"
+        className="rounded border border-ink-secondary px-3 py-1 text-sm text-ink-secondary disabled:opacity-40"
       >
         {pending ? '...' : 'Revoke appeal'}
       </button>
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-ink-muted">
         Revoking is something only you can do directly - your assistant can&apos;t revoke an
         appeal on your behalf, even with delegation granted.
       </p>
       {message && (
-        <div className="mt-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+        <div className="mt-2 rounded border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-ink-primary">
           {message}
         </div>
       )}
