@@ -138,8 +138,9 @@ export default function AdminChat() {
           >
             Auth0 FGA
           </a>{' '}
-          then decides, for a caseworker who does have the tools, which specific contractor
-          record they can act on, and whether a riskier action needs a fresh approval first.
+          (opens Auth0&apos;s own docs on the ReBAC model behind this) then decides, for a
+          caseworker who does have the tools, which specific contractor record they can act on,
+          and whether a riskier action needs a fresh approval first.
         </p>
       </OneTimeNote>
 
@@ -166,7 +167,11 @@ export default function AdminChat() {
             Simulates a fresh MFA/CIBA challenge — required before bulk_disable_contractors or
             bulk_enable_contractors will succeed, and expires 5 minutes after approval. Clicking
             below opens a simulated out-of-band approval (not a real Auth0 CIBA request) before
-            the actual step-up is recorded.
+            the actual step-up is recorded. The approval itself is written server-side once the
+            out-of-band step completes — the button below never gets to just assert &quot;I&apos;m
+            approved,&quot; the same way a real caller shouldn&apos;t be trusted to vouch for its
+            own second factor. FGA reads that server record fresh on every bulk-action call, so
+            the approval genuinely has to have happened, not just be claimed.
           </div>
           {stepUpApprovedAt && (
             <div className="mt-1 text-xs text-status-good">Approved at {stepUpApprovedAt}</div>

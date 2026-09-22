@@ -16,7 +16,8 @@ export type WalkthroughStep =
   | 'case-fga-explainer-seen'
   | 'chat-delegation-explainer-seen'
   | 'admin-rbac-explainer-seen'
-  | 'admin-mcp-explainer-seen';
+  | 'admin-mcp-explainer-seen'
+  | 'access-log-explainer-seen';
 
 const KEY = 'smartgov.walkthroughSteps';
 

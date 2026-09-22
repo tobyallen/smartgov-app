@@ -4,6 +4,8 @@ import { firestore } from '@/lib/firebase-admin';
 import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
 import { AppNav, type NavLink } from '@/components/AppNav';
+import OneTimeNote from '@/components/OneTimeNote';
+import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Access Log' };
 
@@ -165,6 +167,28 @@ export default async function AccessLogPage() {
         Every time your case was viewed or your assistant tried to act on your behalf, deterministically
         checked and recorded here — not inferred from a chat transcript.
       </p>
+      <OneTimeNote step="access-log-explainer-seen">
+        <p className="mt-3 text-sm text-ink-secondary">
+          This is the answer to the question the whole demo is built around:{' '}
+          <em>did the AI have access, on whose authority, and for how long?</em> An AI agent
+          acting on your behalf is only trustworthy if its actions are as accountable and
+          revocable as a human&apos;s would be — which requires a record that exists
+          independently of the agent itself, not one the agent could shape by choosing what to
+          say about its own actions.
+        </p>
+        <p className="mt-2 text-sm text-ink-secondary">
+          Notice the cross-service token exchange rows: each hop (citizen portal → chatbot backend,
+          chatbot backend → case service) gets its own freshly-minted, narrowly-scoped token,
+          instead of one shared credential being passed along the whole chain. That&apos;s the same
+          lesson{' '}
+          <Link className="text-brand-primary underline hover:text-brand-primary-hover" href="/case">
+            your case page
+          </Link>
+          &apos;s over-privileged-service-account comparison makes: a single powerful credential that
+          works everywhere is a bigger blast radius than several narrow ones, each provably scoped
+          to exactly the hop it was issued for.
+        </p>
+      </OneTimeNote>
       <ul className="mt-4 space-y-2 text-sm">
         {events.map((e) => {
           // e.detail/e.context come straight from Firestore with no

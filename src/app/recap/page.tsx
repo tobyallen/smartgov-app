@@ -65,25 +65,50 @@ export default async function RecapPage() {
         machine-readable audit trail rather than inferred from a chat transcript.
       </p>
 
-      <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-ink-secondary">
-        <li>
-          <strong>RBAC</strong> decided which tools existed for your role before you ever typed
-          anything.
-        </li>
-        <li>
-          <strong>Auth0 FGA</strong> decided, fresh on every single request, exactly what your
-          assistant (a separate identity from you) was allowed to do.
-        </li>
-        <li>
+      <div className="mt-4 space-y-4 text-sm text-ink-secondary">
+        <p>
+          <strong>RBAC decided which tools existed for your role before you ever typed anything.</strong>{' '}
+          A citizen account never even sees contractor-management tools listed — they&apos;re not
+          hidden or greyed out, they don&apos;t exist for that identity. This is the coarse,
+          cheap-to-reason-about layer: a role check that runs once, at the boundary, before any
+          specific resource is even in view.
+        </p>
+        <p>
+          <strong>
+            Auth0 FGA decided, fresh on every single request, exactly what your assistant (a
+            separate identity from you) was allowed to do.
+          </strong>{' '}
+          This is the layer RBAC alone can&apos;t do: RBAC answers &quot;can this role use this
+          tool at all,&quot; but not &quot;is this specific assistant allowed to touch this
+          specific case, right now.&quot; That&apos;s a relationship (ReBAC) — the assistant&apos;s
+          delegated relationship to your case — evaluated against live conditions (a 15-minute
+          delegation window, a 30-day appeal window, a 5-minute step-up window), not a static
+          permission that&apos;s either granted or not. A plain role could never expire on its own
+          the way a condition can; that self-expiry is the whole reason the demo&apos;s delegation
+          toggle is interesting instead of just being another checkbox.
+        </p>
+        <p>
           Every one of those decisions is sitting in your{' '}
           <Link className="text-brand-primary underline hover:text-brand-primary-hover" href="/access-log">
             access log
           </Link>
-          , not reconstructed after the fact from a chat transcript.
-        </li>
-      </ul>
+          , not reconstructed after the fact from a chat transcript — and the cross-service token
+          exchanges you saw there use a fresh, narrowly-scoped token per hop instead of one shared
+          credential, plus Auth0&apos;s Agent as Principal feature to record which real backend
+          service actually proxied each request (the <code>act</code> claim), separate from and
+          verifiable independently of whatever the assistant&apos;s own delegation state claims.
+          Auth0 could have solved &quot;an AI agent needs to act on a user&apos;s behalf&quot; by
+          inventing a custom header the backend just trusts — instead it&apos;s a real,
+          cryptographically verifiable claim inside a standard OAuth token, which is why none of
+          this had to be taken on faith.
+        </p>
+      </div>
 
-      <div className="mt-6 flex gap-4 text-sm">
+      <p className="mt-6 text-xs text-ink-muted">
+        For the technically curious, the actual code — none of what you just read is a
+        simplification of what&apos;s really there:
+      </p>
+      <div className="mt-2 flex gap-4 text-sm">
         <a
           className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
           href="https://github.com/tobyallen/smartgov-app"

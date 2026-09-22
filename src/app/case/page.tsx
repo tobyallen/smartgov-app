@@ -115,12 +115,12 @@ export default async function CasePage() {
           >
             Auth0 FGA
           </a>{' '}
-          (fine-grained authorisation) - a system that decides, fresh on every single request,
-          exactly what your assistant is allowed to see. It&apos;s a ReBAC (relationship-based
-          access control) system underneath: access is decided by the actual relationships
-          between your assistant and your case, not by a static list of permissions. There&apos;s
-          no insecure version of this app to show you first, because nothing here ever skips that
-          check.
+          (fine-grained authorisation - links to Auth0&apos;s own docs on the ReBAC model this
+          demo uses) - a system that decides, fresh on every single request, exactly what your
+          assistant is allowed to see. It&apos;s a ReBAC (relationship-based access control)
+          system underneath: access is decided by the actual relationships between your assistant
+          and your case, not by a static list of permissions. There&apos;s no insecure version of
+          this app to show you first, because nothing here ever skips that check.
         </p>
       </OneTimeNote>
 
