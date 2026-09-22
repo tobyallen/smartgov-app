@@ -95,6 +95,24 @@ AI_GATEWAY_MODEL=amazon/nova-pro
 # Action sends. Must match the PROVISIONING_SYNC_SECRET Action Secret
 # exactly. Generate with: openssl rand -hex 32.
 PROVISIONING_SYNC_SECRET=<generate via: openssl rand -hex 32>
+
+# Live-event monitoring (/monitoring, /api/monitoring/*) — polls Auth0
+# tenant logs on a Vercel Cron schedule (see vercel.json) rather than
+# push/webhooks. MONITORING_M2M_CLIENT_ID/SECRET are a DEDICATED Auth0
+# M2M application scoped to the Management API's read:logs permission
+# only - deliberately not the same client as any Action's Management
+# client (those are scoped to update:users and aren't reachable from
+# this app's own runtime). Create via:
+#   auth0 apps create -n "SmartGov Monitoring (M2M)" -t m2m
+#   auth0 api post "client-grants" --data '{"client_id":"<id>","audience":"https://<tenant>/api/v2/","scope":["read:logs"]}'
+MONITORING_M2M_CLIENT_ID=<your monitoring M2M client ID>
+MONITORING_M2M_CLIENT_SECRET=<fetch via: auth0 apps show <client_id> -r>
+
+# CRON_SECRET — checked by /api/monitoring/collect against the
+# Authorization: Bearer header Vercel Cron sends, per Vercel's own
+# recommended pattern for securing cron routes. Generate with:
+# openssl rand -hex 32.
+CRON_SECRET=<generate via: openssl rand -hex 32>
 ```
 
 ## A note on secrets

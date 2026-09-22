@@ -60,6 +60,14 @@ export async function checkAndLog({
   verifiedActor,
 }: CheckArgs): Promise<boolean> {
   let decision: boolean;
+  // Distinguishes a genuine policy denial (FGA evaluated the check and
+  // said no) from a fail-closed infra error (FGA itself was unreachable
+  // or errored) - both produce decision:false, but only the first is a
+  // real authorization signal. Added so the monitoring dashboard's
+  // FGA-denial alert rule (src/lib/monitoring/alerts.ts) can count real
+  // denials without being swamped by transient FGA-client errors, which
+  // are a different kind of problem (infra health, not security).
+  let infraError = false;
   try {
     // Without this, OpenFGA's default (MINIMIZE_LATENCY) is allowed to
     // serve a cached, stale result for however long the store's cache
@@ -79,6 +87,7 @@ export async function checkAndLog({
     decision = result.allowed ?? false;
   } catch {
     decision = false; // fail closed
+    infraError = true;
   }
 
   await firestore().collection('auditEvents').add({
@@ -89,7 +98,7 @@ export async function checkAndLog({
     object: object ?? null,
     context: context ?? null,
     decision,
-    detail: null,
+    detail: infraError ? { infraError: true } : null,
     verifiedActor: verifiedActor ?? null,
     createdAt: new Date(),
   });
@@ -405,6 +414,38 @@ export async function logOboExchange({
     context: null,
     decision: null,
     detail,
+    verifiedActor: verifiedActor ?? null,
+    createdAt: new Date(),
+  });
+}
+
+/**
+ * The failure counterpart to logOboExchange above - added 2026-09-23,
+ * since exchangeToken (lib/obo.ts) previously threw on a failed exchange
+ * without writing anything to auditEvents at all, leaving no record for
+ * the monitoring dashboard's OBO-failure alert rule to read. Called from
+ * exchangeToken's catch path before it re-throws, so the citizen-facing
+ * error behaviour is unchanged - this only adds a record of the failure,
+ * it doesn't change what the caller sees.
+ */
+export async function logOboExchangeFailure({
+  onBehalfOf,
+  detail,
+  verifiedActor,
+}: {
+  onBehalfOf: string;
+  detail: Record<string, unknown>;
+  verifiedActor?: string | null;
+}) {
+  await firestore().collection('auditEvents').add({
+    onBehalfOf,
+    eventType: 'obo_exchange',
+    actingPrincipal: `user:${onBehalfOf}`,
+    relation: null,
+    object: null,
+    context: null,
+    decision: null,
+    detail: { ...detail, failed: true },
     verifiedActor: verifiedActor ?? null,
     createdAt: new Date(),
   });

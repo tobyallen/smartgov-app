@@ -1,4 +1,4 @@
-import { logOboExchange } from './fga';
+import { logOboExchange, logOboExchangeFailure } from './fga';
 import { firestore } from './firebase-admin';
 import { serviceDisplayName } from './serviceNames';
 import { audienceDisplayName } from './audienceNames';
@@ -55,7 +55,26 @@ async function exchangeToken({
   });
 
   if (!response.ok) {
-    throw new Error(`OBO token exchange failed: ${response.status} ${await response.text()}`);
+    const errorBody = await response.text();
+    // Logged before throwing, not instead of - the citizen-facing error
+    // behaviour is unchanged (still throws, still surfaces as a failure
+    // to the caller). This is the only place a failed OBO exchange ever
+    // gets written to auditEvents; without it there was no record at
+    // all for the monitoring dashboard's OBO-failure alert rule to read
+    // (found during that plan's adversarial review, 2026-09-23 - the
+    // plan had assumed this data already existed).
+    await logOboExchangeFailure({
+      onBehalfOf: userId,
+      detail: {
+        audience,
+        fromService: serviceDisplayName(clientId),
+        toService: audienceDisplayName(audience),
+        status: response.status,
+        error: errorBody,
+      },
+      verifiedActor,
+    });
+    throw new Error(`OBO token exchange failed: ${response.status} ${errorBody}`);
   }
 
   const { access_token } = (await response.json()) as { access_token: string };
