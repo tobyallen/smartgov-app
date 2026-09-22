@@ -3,6 +3,7 @@ import type { SessionData } from '@auth0/nextjs-auth0/types';
 export type Persona = 'citizen' | 'caseworker';
 
 const PERSONA_CLAIM = 'https://smartgov.apidays/persona';
+const DEV_TOOLS_CLAIM = 'https://smartgov.apidays/dev-tools';
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -42,4 +43,21 @@ export function personaFor(session: SessionData): Persona {
 
 export function isCaseworker(session: SessionData): boolean {
   return personaFor(session) === 'caseworker';
+}
+
+/**
+ * dev-tools is a separate role from citizen/caseworker, with no
+ * self-service assignment path anywhere in this app - assigned manually
+ * via the Auth0 dashboard/CLI for a rehearsal/test account only (see
+ * assign-persona-role.js and the build plan's "Reruns" section). Reads
+ * the raw ID token the same way personaFor() does, for the same reason:
+ * session.user can silently lose custom claims after any
+ * auth0.getAccessToken() call elsewhere in the app triggers a token
+ * refresh - see personaFor's own comment above for the confirmed SDK
+ * behaviour this works around.
+ */
+export function hasDevToolsRole(session: SessionData): boolean {
+  const idToken = session.tokenSet.idToken;
+  const claims = idToken ? decodeJwtPayload(idToken) : null;
+  return claims?.[DEV_TOOLS_CLAIM] === true;
 }

@@ -2,9 +2,14 @@
  * post-login Action: assigns a real Auth0 role based on the persona the
  * user chose on the landing page - `citizen` or `caseworker` - and
  * exposes that role to the app as an ID token claim on every login. This
- * is the app's only RBAC mechanism: it decides which MCP tools the
- * /admin surface even shows, before FGA gets a chance to evaluate
- * anything.
+ * is the app's only RBAC mechanism for the citizen/caseworker split: it
+ * decides which MCP tools the /admin surface even shows, before FGA gets
+ * a chance to evaluate anything.
+ *
+ * Also exposes a SEPARATE `dev-tools` role as its own claim (read-only -
+ * this Action never assigns that role, only reflects it if already
+ * present) so /api/dev/reset's cross-user reset path can check role
+ * membership; see the `hasDevToolsRole` block below.
  *
  * The role assignment (a Management API write) only needs to happen once
  * - gated on first-ever login via event.stats.logins_count === 1 - but
@@ -60,16 +65,26 @@
  * internal provisioning routes, not a second one to manage).
  */
 exports.onExecutePostLogin = async (event, api) => {
+  // Lazily constructed - most logins (persona already cached, roles
+  // unchanged since last observed) need zero Management API client
+  // construction at all, same reasoning the original persona-only
+  // version of this Action already followed.
+  let _management;
+  const management = () => {
+    if (!_management) {
+      const ManagementClient = require('auth0').ManagementClient;
+      _management = new ManagementClient({
+        domain: event.secrets.DOMAIN,
+        clientId: event.secrets.CLIENT_ID,
+        clientSecret: event.secrets.CLIENT_SECRET,
+      });
+    }
+    return _management;
+  };
+
   let persona = event.user.app_metadata?.persona;
 
   if (!persona) {
-    const ManagementClient = require('auth0').ManagementClient;
-    const management = new ManagementClient({
-      domain: event.secrets.DOMAIN,
-      clientId: event.secrets.CLIENT_ID,
-      clientSecret: event.secrets.CLIENT_SECRET,
-    });
-
     const existingRoles = event.authorization?.roles ?? [];
     if (existingRoles.includes('caseworker')) {
       persona = 'caseworker';
@@ -79,13 +94,49 @@ exports.onExecutePostLogin = async (event, api) => {
       const requestedPersona = event.request.query?.persona;
       persona = requestedPersona === 'caseworker' ? 'caseworker' : 'citizen';
       const roleId = persona === 'caseworker' ? event.secrets.CASEWORKER_ROLE_ID : event.secrets.CITIZEN_ROLE_ID;
-      await management.users.assignRoles({ id: event.user.user_id }, { roles: [roleId] });
+      await management().users.assignRoles({ id: event.user.user_id }, { roles: [roleId] });
     }
 
-    await management.users.update({ id: event.user.user_id }, { app_metadata: { persona } });
+    await management().users.update({ id: event.user.user_id }, { app_metadata: { persona } });
   }
 
   api.idToken.setCustomClaim('https://smartgov.apidays/persona', persona);
+
+  // dev-tools is a SEPARATE role from citizen/caseworker above, with no
+  // self-service assignment path anywhere in this app - it's only ever
+  // granted manually via the Auth0 dashboard/CLI for a rehearsal/test
+  // account (see the build plan's "Reruns" section). Read-only here:
+  // this Action never assigns it, only exposes whatever's already on
+  // the user's own Auth0 record as a claim, the same way the persona
+  // claim above makes event.authorization.roles legible to the app -
+  // without this, /api/dev/reset's cross-user reset path has no way to
+  // check role membership at all, since roles aren't in tokens by default.
+  //
+  // Mirrors app_metadata.persona's own self-healing pattern (adversarial
+  // review, 2026-09-22): event.authorization.roles is documented by
+  // Auth0 only as conditionally present, not guaranteed present on every
+  // trigger of this Action (e.g. a token refresh or OBO exchange may not
+  // populate it the same way an interactive login does) - unlike persona,
+  // there's no query-param/default to fall back to here (dev-tools is
+  // never self-assigned), so without a cached copy a transaction where
+  // event.authorization happens to be absent would silently omit the
+  // claim even for a genuinely dev-tools-holding user. Cache the last
+  // known-true value in app_metadata the moment it's observed, and treat
+  // that as authoritative if event.authorization isn't populated this
+  // time - real revocation (removing the role in the dashboard) still
+  // takes effect the next time event.authorization IS populated and
+  // comes back without 'dev-tools', which overwrites the cached true.
+  const rolesKnown = event.authorization?.roles !== undefined;
+  let devToolsGranted = event.authorization?.roles?.includes('dev-tools') ?? false;
+  if (rolesKnown && devToolsGranted !== !!event.user.app_metadata?.devTools) {
+    await management().users.update({ id: event.user.user_id }, { app_metadata: { devTools: devToolsGranted } });
+  } else if (!rolesKnown) {
+    devToolsGranted = !!event.user.app_metadata?.devTools;
+  }
+  if (devToolsGranted) {
+    api.idToken.setCustomClaim('https://smartgov.apidays/dev-tools', true);
+    api.accessToken.setCustomClaim('https://smartgov.apidays/dev-tools', true);
+  }
 
   // Also set on the access token, not just the ID token - MCP clients
   // (including this app's own /api/mcp and /api/admin-mcp routes, which

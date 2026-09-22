@@ -92,6 +92,25 @@ export async function ensureCitizenProvisioned(
   const existingAgentDoc = await db.collection('agents').doc(userId).get();
 
   if (existingCase && existingAgentDoc.exists) {
+    // Self-heal a specific interrupted-provisioning shape: both Firestore
+    // docs exist (so the fast path above would otherwise return early) but
+    // the `owner` tuple write that should have accompanied them never
+    // landed - e.g. the process died between the two Firestore writes above
+    // and this FGA write on a prior attempt. Checked directly, not assumed:
+    // an FGA write of an already-existing tuple errors rather than no-ops,
+    // so this must read-before-write, unlike the two Firestore set() calls
+    // above which are safe to blindly repeat.
+    const { tuples } = await getFgaClient().read({
+      user: `user:${userId}`,
+      relation: 'owner',
+      object: caseIdFor(userId),
+    });
+    if (tuples.length === 0) {
+      await getFgaClient().write({
+        writes: [{ user: `user:${userId}`, relation: 'owner', object: caseIdFor(userId) }],
+      });
+    }
+
     const agentData = existingAgentDoc.data()!;
     return {
       case: existingCase,
@@ -162,7 +181,7 @@ export async function ensureCitizenProvisioned(
   };
 }
 
-const CONTRACTORS = [
+export const CONTRACTORS = [
   { id: 'contractor-1', name: 'Riverside Grounds Maintenance' },
   { id: 'contractor-2', name: 'Northside Waste Collection' },
   { id: 'contractor-3', name: 'Civic Hall Security Services' },
@@ -171,27 +190,53 @@ const CONTRACTORS = [
 ];
 
 /**
+ * Seeds the shared mock contractor records only — idempotent, same
+ * deterministic ids every time, a harmless overwrite on replay. Split
+ * out from ensureCaseworkerProvisioned below so setup.ts (and
+ * teardown.ts's inverse) can seed/clear the records without needing a
+ * caseworker uid to grant FGA tuples against — there isn't one yet on a
+ * freshly-provisioned tenant.
+ */
+export async function seedContractorRecords(): Promise<void> {
+  const db = firestore();
+  for (const contractor of CONTRACTORS) {
+    const ref = db.collection('contractors').doc(contractor.id);
+    // Real bug caught by adversarial review (2026-09-22), confirmed
+    // against the SDK's own SetOptions.mergeFields doc comment ("any
+    // field path that is not specified is ignored and remains
+    // untouched"): the previous version wrote { name, status } with
+    // mergeFields: ['name'] on every call, including the very first one
+    // for a brand-new doc - status was never actually written, ever,
+    // because 'status' wasn't itself in mergeFields, not just
+    // "untouched on replay" as intended. adminTools.ts's listContractors
+    // reads data.status back out, so every contractor had status:
+    // undefined the whole time. Fixed by only writing status on first
+    // creation (never stomping a status a caseworker later changed via
+    // disable/enable), and always writing name via plain merge.
+    const snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({ name: contractor.name, status: 'active' });
+    } else {
+      await ref.set({ name: contractor.name }, { merge: true });
+    }
+  }
+}
+
+/**
  * Runs once per caseworker, on first login: seeds the shared mock
- * contractor records (idempotent - same deterministic ids every time, a
- * harmless overwrite on replay) and grants this caseworker's
- * caseworker_managed / caseworker_can_bulk_disable FGA tuples on all of
- * them. Without this, bulk_disable_contractors and disable_contractor
- * deny unconditionally for every caseworker until someone manually runs
- * scripts/seed-contractors.ts - which contradicts "a sent link should
- * just work." Contractors themselves are shared/global, not
- * per-caseworker, to avoid duplicating the same 5 mock records for every
- * signup; only the FGA grants are caseworker-specific.
+ * contractor records (via seedContractorRecords above) and grants this
+ * caseworker's caseworker_managed / caseworker_can_bulk_disable FGA
+ * tuples on all of them. Without this, bulk_disable_contractors and
+ * disable_contractor deny unconditionally for every caseworker until
+ * someone manually runs scripts/seed-contractors.ts - which contradicts
+ * "a sent link should just work." Contractors themselves are
+ * shared/global, not per-caseworker, to avoid duplicating the same 5
+ * mock records for every signup; only the FGA grants are
+ * caseworker-specific.
  */
 export async function ensureCaseworkerProvisioned(caseworkerUserId: string): Promise<void> {
-  const db = firestore();
   const fga = getFgaClient();
-
-  for (const contractor of CONTRACTORS) {
-    await db.collection('contractors').doc(contractor.id).set(
-      { name: contractor.name, status: 'active' },
-      { mergeFields: ['name'] }, // never stomp a status another caseworker already changed
-    );
-  }
+  await seedContractorRecords();
 
   async function grantedObjectsFor(relation: string) {
     const { tuples } = await fga.read({ user: `user:${caseworkerUserId}`, relation, object: 'contractor:' });

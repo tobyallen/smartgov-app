@@ -46,3 +46,16 @@ export function markStepSeen(step: WalkthroughStep): void {
     // copy just shows every time instead of once. Not worth failing over.
   }
 }
+
+// Used by ResetMyDataButton after /api/dev/reset succeeds - a citizen
+// replaying the walkthrough fresh should see the one-time narration
+// again too, not just get fresh case/agent/FGA state with stale
+// "already seen this" flags left over from the account's first pass.
+export function clearAllSeenSteps(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(KEY);
+  } catch {
+    // Same as markStepSeen above - not worth failing over.
+  }
+}

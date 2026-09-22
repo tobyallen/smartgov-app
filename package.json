@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup": "npx tsx scripts/setup.ts",
+    "teardown": "npx tsx scripts/teardown.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.56",

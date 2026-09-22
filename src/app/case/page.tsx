@@ -5,6 +5,7 @@ import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisi
 import { isCaseworker } from '@/lib/roles';
 import OneTimeNote from '@/components/OneTimeNote';
 import { RevokeAppealButton } from '@/components/RevokeAppealButton';
+import { ResetMyDataButton } from '@/components/ResetMyDataButton';
 import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'My Case' };
@@ -155,6 +156,10 @@ db.query.cases.findFirst({
         <a className="text-blue-600 underline" href="/auth/logout">
           Log out
         </a>
+      </div>
+
+      <div className="mt-6 border-t pt-4">
+        <ResetMyDataButton />
       </div>
     </main>
   );
