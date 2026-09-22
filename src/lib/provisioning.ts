@@ -33,7 +33,7 @@ export type AgentRecord = {
 export type AuditEventRecord = {
   id: string;
   onBehalfOf: string; // whose event this is - the beneficiary, not necessarily the actor
-  eventType: 'check' | 'tuple_write' | 'tuple_delete' | 'obo_exchange';
+  eventType: 'check' | 'tuple_write' | 'tuple_delete' | 'obo_exchange' | 'status_change';
   actingPrincipal: string; // who/what actually performed the action - 'user:...' or 'agent:...'
   relation: string | null;
   object: string | null;

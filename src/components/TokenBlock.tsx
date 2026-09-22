@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CLIENT_DISPLAY_NAMES } from '@/lib/serviceNames';
 
 // Shared by DebugTokens (the citizen's own session tokens) and the chat
 // trace cards (the OBO-exchanged tokens minted per-request in lib/obo.ts)
@@ -20,24 +21,6 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
 export function jwtIoUrl(token: string) {
   return `https://jwt.io/#id_token=${encodeURIComponent(token)}`;
 }
-
-// Client IDs aren't secrets (only their secrets are), so a hardcoded
-// display map is fine here - this only exists to make the `act` chain
-// readable as "which app did this hop" instead of a bare opaque ID.
-// Falls back to the raw ID for anything not in this tenant's known set,
-// rather than hiding an unrecognised hop.
-const CLIENT_DISPLAY_NAMES: Record<string, string> = {
-  zS9EnPkBdrI0QXfQ73XKMKr7oCnKRNj0: 'SmartGov Citizen Portal',
-  xCMSFekvf2fsIFVFqPPz7RkkaE4UyFV0: 'Chatbot Backend',
-  pk8ytDLT2CtIoxrFFQqKXaUrRdZs2q94: 'SmartGov Chatbot Backend (case-service hop)',
-  // Auth0 Agent as Principal (EA) — act.sub shows the external_agent_id set
-  // at registration, not a client ID, once agent_subject_claims: 'auth0-v1'
-  // is enabled on the resource server (see mcpAuth.ts). A distinct name
-  // space from the client-id map above, so both are checked by the same
-  // lookup rather than needing the caller to know which kind of id it is.
-  'smartgov-chatbot-backend': 'Agent: SmartGov Chatbot Backend',
-  'smartgov-case-service-caller': 'Agent: SmartGov Case Service Caller',
-};
 
 // Every "user" sub shown anywhere in this app's tokens is always the
 // current viewer's own uid - there's no page where a citizen's trace

@@ -1,5 +1,7 @@
 import { logOboExchange } from './fga';
 import { firestore } from './firebase-admin';
+import { serviceDisplayName } from './serviceNames';
+import { audienceDisplayName } from './audienceNames';
 
 /**
  * RFC 8693 On-Behalf-Of token exchange. Two call sites, two hops, and -
@@ -22,12 +24,21 @@ async function exchangeToken({
   audience,
   clientId,
   clientSecret,
+  verifiedActor,
 }: {
   userId: string;
   accessToken: string;
   audience: string;
   clientId: string;
   clientSecret: string;
+  // Real Auth0 agent identity (act.sub) already verified from the
+  // INCOMING request that's triggering this exchange, if any - e.g.
+  // submitAppeal's exchangeForCaseService call runs inside an MCP tool
+  // handler that already validated the caller's token via mcpAuth.ts.
+  // exchangeForMcp's outer hop has none: the citizen's own plain login
+  // token has no act claim to verify, so this is legitimately null
+  // there, not a gap.
+  verifiedActor?: string | null;
 }): Promise<string> {
   const response = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
     method: 'POST',
@@ -50,16 +61,23 @@ async function exchangeToken({
   const { access_token } = (await response.json()) as { access_token: string };
 
   // Logged separately from the FGA checks either side of it — this is
-  // the event the "cross-service" trace card renders from. detail.audience
-  // is what lets two exchanges in the same turn (chat->MCP, then
-  // MCP-tool->case-service for submit_appeal) read as distinct events
-  // rather than a confusing duplicate pair.
+  // the event the "cross-service" trace card and /access-log both
+  // render from. fromService/toService (added 2026-09-22, alongside the
+  // existing detail.audience) are what let a reader tell "citizen-portal
+  // -> chatbot-backend" apart from "chatbot-backend -> case-service"
+  // without needing to recognise a raw resource-server URL by eye - the
+  // access-log page previously had detail.audience available but never
+  // rendered it, and it was the only field that varied between the two
+  // hops in the first place.
   await logOboExchange({
     onBehalfOf: userId,
     detail: {
       audience,
+      fromService: serviceDisplayName(clientId),
+      toService: audienceDisplayName(audience),
       note: 'sub preserved as the caller; act.sub now a real Auth0 agent identity (agent_subject_claims: auth0-v1), not just a generic client marker — see lib/mcpAuth.ts',
     },
+    verifiedActor,
   });
 
   return access_token;
@@ -140,9 +158,14 @@ export async function exchangeForMcp({
 export async function exchangeForCaseService({
   citizenUserId,
   citizenAccessToken,
+  verifiedActor,
 }: {
   citizenUserId: string;
   citizenAccessToken: string;
+  // The MCP request that reached submitAppeal already verified act.sub
+  // via mcpAuth.ts by the time this runs - worth logging alongside this
+  // hop too, the same token-integrity signal check events already carry.
+  verifiedActor?: string | null;
 }): Promise<string> {
   return exchangeToken({
     userId: citizenUserId,
@@ -150,5 +173,6 @@ export async function exchangeForCaseService({
     audience: process.env.CASE_SERVICE_AUDIENCE!,
     clientId: process.env.OBO_CASE_SERVICE_CLIENT_ID!,
     clientSecret: process.env.OBO_CASE_SERVICE_CLIENT_SECRET!,
+    verifiedActor,
   });
 }

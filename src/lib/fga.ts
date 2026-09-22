@@ -376,13 +376,25 @@ export async function checkStepUpBulkDisable({
   });
 }
 
-/** Logs the OBO token-exchange step itself (distinct from the FGA checks either side of it). */
+/**
+ * Logs the OBO token-exchange step itself (distinct from the FGA checks
+ * either side of it). verifiedActor added 2026-09-22 (mirrors
+ * checkAndLog's own field) - previously absent from this write entirely,
+ * along with setAgentDelegation's, unlike every other auditEvents write
+ * site in this file. Since exchangeToken (lib/obo.ts) is the exchange
+ * itself, the caller-supplied token's act.sub - if any - describes who
+ * proxied the SUBJECT token in, not this exchange's own result; still
+ * worth logging alongside detail.fromService/toService as the same kind
+ * of token-integrity signal check events already carry.
+ */
 export async function logOboExchange({
   onBehalfOf,
   detail,
+  verifiedActor,
 }: {
   onBehalfOf: string;
   detail: Record<string, unknown>;
+  verifiedActor?: string | null;
 }) {
   await firestore().collection('auditEvents').add({
     onBehalfOf,
@@ -393,6 +405,7 @@ export async function logOboExchange({
     context: null,
     decision: null,
     detail,
+    verifiedActor: verifiedActor ?? null,
     createdAt: new Date(),
   });
 }

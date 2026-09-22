@@ -90,6 +90,7 @@ export async function submitAppeal(ctx: ToolContext) {
     exchangedToken = await exchangeForCaseService({
       citizenUserId: ctx.citizenUserId,
       citizenAccessToken: ctx.citizenAccessToken,
+      verifiedActor: ctx.verifiedActor,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
