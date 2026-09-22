@@ -22,6 +22,94 @@ const LABELS: Record<string, string> = {
   status_change: 'Appeal revoked',
 };
 
+// Each of this app's FGA conditions (fga-model.fga) takes exactly two
+// timestamp inputs - "now" and an anchor - and a fixed duration. Rather
+// than dumping the raw context keys/ISO strings a reader has no way to
+// interpret at a glance (the original version of this block, which
+// prompted this rewrite - "current_time: 2026-09-22T06:37:02.550Z" says
+// nothing about WHY the check passed), turn them into one sentence:
+// which window this is, how much time was actually left or how long ago
+// it lapsed. Keyed by relation, since that's what checkAndLog's callers
+// (checkDelegation/checkAppealWindow/checkStepUpBulkDisable in lib/fga.ts)
+// already use to identify which condition ran.
+const CONDITION_WINDOWS: Record<
+  string,
+  { anchorKey: string; nowKey: string; durationMinutes: number; label: string }
+> = {
+  agent_delegate: { anchorKey: 'granted_at', nowKey: 'current_time', durationMinutes: 15, label: 'Delegation' },
+  agent_can_submit_appeal: {
+    anchorKey: 'assessment_time',
+    nowKey: 'current_time',
+    durationMinutes: 720 * 60,
+    label: 'Appeal window',
+  },
+  caseworker_can_bulk_disable: {
+    anchorKey: 'approved_at',
+    nowKey: 'current_time',
+    durationMinutes: 5,
+    label: 'Step-up approval',
+  },
+};
+
+function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  if (minutes < 60 * 24) return `${Math.round(minutes / 60)} hr`;
+  return `${Math.round(minutes / (60 * 24))} days`;
+}
+
+/**
+ * Turns a check event's relation + raw FGA condition context into one
+ * plain sentence - "Delegation was granted 3 min ago; it's valid for 15
+ * min" or "Denied - delegation lapsed 6 min ago (valid for 15 min from
+ * grant)." Returns null for anything not in CONDITION_WINDOWS (an
+ * unconditioned relation like `owner`, which has no window to explain)
+ * or with a context shape that doesn't parse - falls back to showing
+ * nothing rather than a wrong or nonsensical sentence.
+ */
+function describeConditionWindow(
+  relation: string | null,
+  context: Record<string, unknown> | null,
+  decision: boolean | null,
+): string | null {
+  if (!relation || !context) return null;
+  const window = CONDITION_WINDOWS[relation];
+  if (!window) return null;
+
+  const anchorRaw = context[window.anchorKey];
+  const nowRaw = context[window.nowKey];
+  if (typeof anchorRaw !== 'string' || typeof nowRaw !== 'string') return null;
+  const anchor = new Date(anchorRaw);
+  const now = new Date(nowRaw);
+  if (Number.isNaN(anchor.getTime()) || Number.isNaN(now.getTime())) return null;
+
+  // A zero-value anchor (new Date(0), 1970) is this app's own convention
+  // for "no grant has ever happened" (see checkDelegation's comment in
+  // lib/fga.ts) - worth naming directly rather than reporting it as
+  // "56 years ago," which is technically true and completely unhelpful.
+  if (anchor.getTime() === 0) {
+    return `${window.label} has never been granted.`;
+  }
+
+  const elapsedMinutes = (now.getTime() - anchor.getTime()) / 60_000;
+  const durationLabel = formatMinutes(window.durationMinutes);
+  const withinWindow = elapsedMinutes <= window.durationMinutes;
+  // Report what the window itself says, then separately whether that
+  // matches the logged decision - the condition and the decision are
+  // two independently-computed facts (one from this component, one from
+  // the FGA check as a whole), so don't assume they always agree just
+  // because this is the only condition in play; if they ever diverge,
+  // say so plainly rather than asserting a reason that doesn't match
+  // the actual outcome.
+  if (withinWindow) {
+    const remaining = formatMinutes(window.durationMinutes - elapsedMinutes);
+    const outcome = decision === false ? '(but something else denied it)' : "- that's why this passed";
+    return `${window.label} is within its ${durationLabel} window (${remaining} left) ${outcome}.`;
+  }
+  const overBy = formatMinutes(elapsedMinutes - window.durationMinutes);
+  const outcome = decision === true ? '(but this was still allowed)' : "- that's why this was denied";
+  return `${window.label}'s ${durationLabel} window lapsed ${overBy} ago ${outcome}.`;
+}
+
 export default async function AccessLogPage() {
   const session = await auth0.getSession();
   if (!session) {
@@ -145,20 +233,27 @@ export default async function AccessLogPage() {
                   token-verified actor: {e.verifiedActor}
                 </div>
               )}
-              {e.eventType === 'check' && context && (
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-xs text-ink-muted">
-                    Why this decision, right now
-                  </summary>
-                  <div className="mt-1 rounded bg-ink-secondary/5 p-2 text-xs text-ink-secondary">
-                    {Object.entries(context).map(([key, value]) => (
-                      <div key={key}>
-                        {key}: {String(value)}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
+              {e.eventType === 'check' &&
+                context &&
+                (() => {
+                  const explanation = describeConditionWindow(e.relation, context, e.decision);
+                  if (!explanation) return null;
+                  return (
+                    <div className="mt-1 text-xs text-ink-muted">
+                      {explanation}{' '}
+                      <details className="inline">
+                        <summary className="inline cursor-pointer">raw values</summary>
+                        <div className="mt-1 rounded bg-ink-secondary/5 p-2 text-ink-secondary">
+                          {Object.entries(context).map(([key, value]) => (
+                            <div key={key}>
+                              {key}: {String(value)}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  );
+                })()}
             </li>
           );
         })}
