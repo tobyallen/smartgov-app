@@ -8,6 +8,7 @@ import OneTimeNote from '@/components/OneTimeNote';
 import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
 import { ChatMessageText } from '@/components/ChatMessageText';
 import { CibaApproval } from '@/components/CibaApproval';
+import { ResetMyDataButton } from '@/components/ResetMyDataButton';
 
 type TraceEvent = {
   kind: 'fga_check' | 'obo_exchange';
@@ -277,6 +278,10 @@ export default function AdminChat() {
           Send
         </button>
       </form>
+
+      <div className="mt-6 border-t pt-4">
+        <ResetMyDataButton persona="caseworker" />
+      </div>
     </main>
   );
 }

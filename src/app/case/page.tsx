@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { auth0 } from '@/lib/auth0';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
@@ -28,6 +29,18 @@ export default async function CasePage() {
         </a>
       </main>
     );
+  }
+
+  // This page is citizen-only content - a caseworker has no case record
+  // and shouldn't get one created for them just by visiting here (found
+  // via a real question: "a caseworker doesn't have access to the case
+  // page, how would they reset their usage" - ensureCitizenProvisioned
+  // below was running unconditionally for anyone signed in, silently
+  // creating a nonsensical citizen case/agent doc for a caseworker
+  // account). /admin is the caseworker's equivalent surface, including
+  // its own reset button - see ResetMyDataButton there.
+  if (isCaseworker(session)) {
+    redirect('/admin');
   }
 
   const citizenUserId = session.user.sub;
@@ -148,11 +161,6 @@ db.query.cases.findFirst({
         <Link className="text-blue-600 underline" href="/recap">
           What you just saw
         </Link>
-        {isCaseworker(session) && (
-          <Link className="text-blue-600 underline" href="/admin">
-            Admin console
-          </Link>
-        )}
         <a className="text-blue-600 underline" href="/auth/logout">
           Log out
         </a>
