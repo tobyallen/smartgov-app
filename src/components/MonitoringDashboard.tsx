@@ -42,10 +42,24 @@ export function MonitoringDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    let stopped = false;
 
     async function poll() {
+      if (stopped) return;
       try {
         const res = await fetch('/api/monitoring/snapshot');
+        // 503 means the route has deliberately disabled itself (see
+        // MONITORING_DISABLED in snapshot/route.ts) - stop polling
+        // rather than keep retrying every 10s against a route that's
+        // down on purpose, which would just be more load for no reason.
+        if (res.status === 503) {
+          if (!cancelled) {
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            setError(body.error ?? 'Monitoring is temporarily disabled.');
+          }
+          stopped = true;
+          return;
+        }
         if (!res.ok) throw new Error(`snapshot fetch failed: ${res.status}`);
         const data = (await res.json()) as Snapshot;
         if (!cancelled) {
