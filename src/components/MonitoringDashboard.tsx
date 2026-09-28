@@ -41,7 +41,15 @@ export function MonitoringDashboard() {
     setIsFetching(true);
     try {
       const res = await fetch('/api/monitoring/snapshot');
-      if (!res.ok) throw new Error(`snapshot fetch failed: ${res.status}`);
+      if (!res.ok) {
+        // The route returns a real JSON error body on both its own
+        // auth check (403) and an upstream Auth0 failure (502 - see
+        // snapshot/route.ts) - surface that message rather than just
+        // the bare status code, so "Auth0 is rate-limited/down" reads
+        // differently from "you're not signed in as a dev-tools account."
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? `snapshot fetch failed: ${res.status}`);
+      }
       const data = (await res.json()) as Snapshot;
       setSnapshot(data);
       setError(null);
@@ -122,7 +130,12 @@ export function MonitoringDashboard() {
                   <li key={i} className="flex justify-between gap-4">
                     <span className={SEVERITY_CLASSES[event.severity]}>{event.summary}</span>
                     <span className="shrink-0 text-xs text-ink-muted">
-                      {new Date(event.createdAt).toLocaleTimeString()}
+                      {new Date(event.createdAt).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
                     </span>
                   </li>
                 ))}

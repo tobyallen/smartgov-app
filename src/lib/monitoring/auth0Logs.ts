@@ -26,8 +26,13 @@ async function getManagementToken(): Promise<string> {
     }),
   });
   if (!response.ok) {
+    // Same status-aware framing as the /logs fetch below - the token
+    // endpoint is a separate Auth0 call and can independently 429/5xx,
+    // though hit far less often given the token is cached for its full
+    // lifetime rather than re-fetched on every click.
+    const kind = response.status === 429 ? 'rate limited' : response.status >= 500 ? 'Auth0-side error' : 'error';
     throw new Error(
-      `Failed to obtain Auth0 Management API token for monitoring: ${response.status} ${await response.text()}`,
+      `Auth0 token endpoint ${kind} (monitoring M2M client): ${response.status} ${await response.text()}`,
     );
   }
   const { access_token, expires_in } = (await response.json()) as {
@@ -86,7 +91,24 @@ export async function fetchAuth0LogsSince(
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
-    throw new Error(`Auth0 /api/v2/logs fetch failed: ${response.status} ${await response.text()}`);
+    // Every Management API response (success or error) carries
+    // x-ratelimit-limit/-remaining/-reset headers - confirmed live
+    // against this tenant. A 429 specifically means this M2M client hit
+    // its rate limit (15,000 req/~60s window at last check, so
+    // extremely unlikely at this feature's manual-click volume, but
+    // surfaced distinctly rather than folded into a generic message,
+    // since "Auth0 is rate-limiting us" and "Auth0 is having an outage"
+    // (a 5xx) call for different responses from whoever's watching this
+    // dashboard). Not asserting a specific error-body shape here - Auth0
+    // doesn't publish one precisely, and this app hasn't triggered a
+    // real 429/5xx against this tenant to confirm one; response.text()
+    // is included raw rather than parsed so nothing is lost either way.
+    const resetHeader = response.headers.get('x-ratelimit-reset');
+    const resetNote = resetHeader ? ` (resets at ${new Date(Number(resetHeader) * 1000).toISOString()})` : '';
+    const kind = response.status === 429 ? 'rate limited' : response.status >= 500 ? 'Auth0-side error' : 'error';
+    throw new Error(
+      `Auth0 /api/v2/logs ${kind}: ${response.status}${resetNote} ${await response.text()}`,
+    );
   }
   const logs = (await response.json()) as Auth0LogEntry[];
   if (logs.length === 0) {

@@ -21,7 +21,23 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const { events } = await fetchAuth0LogsSince(null);
+  // fetchAuth0LogsSince throws a plain Error on any non-OK response from
+  // Auth0 (token fetch or the /logs call itself) - a 429 (Management API
+  // rate limit) or a 500 (Auth0 having an outage) both land here. Caught
+  // explicitly and returned as a distinguishable 502, rather than left to
+  // propagate into Next.js's generic uncaught-error 500 with no body -
+  // otherwise the dashboard can't tell "Auth0 is having a problem" apart
+  // from "this app's own code is broken."
+  let events;
+  try {
+    ({ events } = await fetchAuth0LogsSince(null));
+  } catch (err) {
+    return NextResponse.json(
+      { error: `Auth0 fetch failed: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 502 },
+    );
+  }
+
   const alerts = evaluateAuth0Alerts(events);
 
   const counts = {
