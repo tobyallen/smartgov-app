@@ -46,8 +46,8 @@ export default async function MonitoringPage() {
       />
       <h1 className="text-xl font-semibold text-ink-primary">Monitoring</h1>
       <p className="mt-2 text-sm text-ink-secondary">
-        Live signup/login volume and flagged issues from Auth0 tenant logs and this app&apos;s own
-        FGA/OBO audit trail. Refreshes automatically — no need to reload.
+        Signup/login volume and flagged issues from Auth0 tenant logs. Click Refresh for the
+        latest data — this page does not update on its own.
       </p>
       <MonitoringDashboard />
     </main>
