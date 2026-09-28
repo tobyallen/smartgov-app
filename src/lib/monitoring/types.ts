@@ -1,9 +1,9 @@
 export type MonitoringSeverity = 'info' | 'warning' | 'critical';
 
-// One doc per normalized log line. Doc ID is the source's own event ID
-// (Auth0 log `_id`) rather than an auto-generated ID, so re-processing
-// the same batch after a partial-failure retry overwrites instead of
-// duplicating — see monitoringCheckpoints below for why that matters.
+// One event per normalized Auth0 log line, fetched fresh on every
+// manual-refresh click (see snapshot/route.ts) - no longer persisted
+// to Firestore. Doc-ID/checkpoint concerns from the earlier
+// cron-and-Firestore design no longer apply.
 export type MonitoringEventRecord = {
   source: 'auth0';
   type: string; // Auth0 log `type` code (e.g. 'f', 'ss', 'limit_wc')
@@ -11,28 +11,4 @@ export type MonitoringEventRecord = {
   summary: string;
   raw: Record<string, unknown>;
   createdAt: Date;
-};
-
-export type AlertStatus = 'active' | 'resolved';
-
-// One doc per ruleId while status is 'active' — upserted on the ruleId,
-// not written fresh on every poll. See evaluateAlertRules in alerts.ts.
-export type MonitoringAlertRecord = {
-  ruleId: string;
-  severity: MonitoringSeverity;
-  title: string;
-  detail: string;
-  count: number;
-  windowStart: Date;
-  windowEnd: Date;
-  status: AlertStatus;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-// checkpoint doc: monitoringCheckpoints/auth0 — { lastLogId: string | null, updatedAt: Date }
-// lock doc: monitoringCheckpoints/lock — { lockedAt: Date }
-export type MonitoringCheckpoint = {
-  lastLogId: string | null;
-  updatedAt: Date;
 };

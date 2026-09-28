@@ -1,26 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type Severity = 'info' | 'warning' | 'critical';
 
 type SnapshotEvent = { type: string; severity: Severity; summary: string; createdAt: string };
-type SnapshotAlert = {
-  ruleId: string;
-  severity: Severity;
-  title: string;
-  detail: string;
-  status: 'active' | 'resolved';
-  updatedAt: string;
-};
+type SnapshotAlert = { ruleId: string; severity: Severity; title: string; detail: string; breaching: boolean };
 type Snapshot = {
   counts: { signups: number; loginsSuccess: number; loginsFailed: number };
   activeAlerts: number;
   alerts: SnapshotAlert[];
   recentEvents: SnapshotEvent[];
+  fetchedAt: string;
 };
-
-const POLL_INTERVAL_MS = 10_000;
 
 const SEVERITY_CLASSES: Record<Severity, string> = {
   info: 'text-ink-secondary',
@@ -29,108 +21,116 @@ const SEVERITY_CLASSES: Record<Severity, string> = {
 };
 
 /**
- * Polls /api/monitoring/snapshot on an interval rather than using
- * onSnapshot/websockets/SSE - consistent with the rest of this app,
- * which has no live server-pushed connection anywhere (see the build
- * plan's "MCP hosting resolved" note). 10s is fast enough to read as
- * "live" for a human watching a screen during a talk, without adding a
- * connection type this app has zero other precedent for.
+ * Fetches /api/monitoring/snapshot on mount and on manual "Refresh"
+ * click only - no auto-poll, no timer, no caching layer of any kind.
+ * See monitoring-redesign-v6.md: every prior version's auto-poll or
+ * caching mechanism was found, on adversarial review, to rely on an
+ * unverified assumption about how many browser tabs/instances/operators
+ * would be involved at once. A human clicking a button can only ever
+ * issue one request at a time, which removes that entire category of
+ * risk rather than trying to bound it - see the plan for the accepted
+ * tradeoffs this gives up (no live auto-refresh, a spike between two
+ * clicks may not be caught).
  */
 export function MonitoringDashboard() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    let stopped = false;
-
-    async function poll() {
-      if (stopped) return;
-      try {
-        const res = await fetch('/api/monitoring/snapshot');
-        // 503 means the route has deliberately disabled itself (see
-        // MONITORING_DISABLED in snapshot/route.ts) - stop polling
-        // rather than keep retrying every 10s against a route that's
-        // down on purpose, which would just be more load for no reason.
-        if (res.status === 503) {
-          if (!cancelled) {
-            const body = (await res.json().catch(() => ({}))) as { error?: string };
-            setError(body.error ?? 'Monitoring is temporarily disabled.');
-          }
-          stopped = true;
-          return;
-        }
-        if (!res.ok) throw new Error(`snapshot fetch failed: ${res.status}`);
-        const data = (await res.json()) as Snapshot;
-        if (!cancelled) {
-          setSnapshot(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      }
+  const refresh = useCallback(async () => {
+    setIsFetching(true);
+    try {
+      const res = await fetch('/api/monitoring/snapshot');
+      if (!res.ok) throw new Error(`snapshot fetch failed: ${res.status}`);
+      const data = (await res.json()) as Snapshot;
+      setSnapshot(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsFetching(false);
     }
-
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
   }, []);
 
-  if (error) {
-    return <p className="mt-6 text-sm text-status-critical">Couldn&apos;t load monitoring data: {error}</p>;
-  }
-  if (!snapshot) {
-    return <p className="mt-6 text-sm text-ink-muted">Loading…</p>;
-  }
+  useEffect(() => {
+    // void + microtask hop rather than calling refresh() directly - its
+    // first statement is setIsFetching(true), and calling that
+    // synchronously from inside the effect body trips
+    // react-hooks/set-state-in-effect (a cascading-render risk lint,
+    // already hit once before in this codebase - see CibaApproval.tsx).
+    void Promise.resolve().then(refresh);
+  }, [refresh]);
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Counter label="Signups (15 min)" value={snapshot.counts.signups} />
-        <Counter label="Logins ok (15 min)" value={snapshot.counts.loginsSuccess} />
-        <Counter label="Logins failed (15 min)" value={snapshot.counts.loginsFailed} tone={snapshot.counts.loginsFailed > 0 ? 'warning' : undefined} />
-        <Counter label="Active alerts" value={snapshot.activeAlerts} tone={snapshot.activeAlerts > 0 ? 'critical' : undefined} />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={isFetching}
+          className="rounded border border-brand-primary px-3 py-1.5 text-sm font-medium text-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
+        {snapshot && (
+          <span className="text-xs text-ink-muted">
+            Last updated {new Date(snapshot.fetchedAt).toLocaleTimeString()}
+          </span>
+        )}
       </div>
 
-      <section>
-        <h2 className="text-sm font-semibold text-ink-primary">Alerts</h2>
-        {snapshot.alerts.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">No alerts recorded yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-2">
-            {snapshot.alerts.map((alert) => (
-              <li key={alert.ruleId} className="rounded border border-ink-muted/20 p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`font-medium ${SEVERITY_CLASSES[alert.severity]}`}>{alert.title}</span>
-                  <span className="text-xs uppercase text-ink-muted">{alert.status}</span>
-                </div>
-                <p className="mt-1 text-ink-secondary">{alert.detail}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {error && <p className="text-sm text-status-critical">Couldn&apos;t load monitoring data: {error}</p>}
 
-      <section>
-        <h2 className="text-sm font-semibold text-ink-primary">Recent events</h2>
-        {snapshot.recentEvents.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">No events recorded yet.</p>
-        ) : (
-          <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto text-sm">
-            {snapshot.recentEvents.map((event, i) => (
-              <li key={i} className="flex justify-between gap-4">
-                <span className={SEVERITY_CLASSES[event.severity]}>{event.summary}</span>
-                <span className="shrink-0 text-xs text-ink-muted">
-                  {new Date(event.createdAt).toLocaleTimeString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {!snapshot && !error && <p className="text-sm text-ink-muted">Loading…</p>}
+
+      {snapshot && (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Counter label="Signups (this fetch)" value={snapshot.counts.signups} />
+            <Counter label="Logins ok (this fetch)" value={snapshot.counts.loginsSuccess} />
+            <Counter
+              label="Logins failed (this fetch)"
+              value={snapshot.counts.loginsFailed}
+              tone={snapshot.counts.loginsFailed > 0 ? 'warning' : undefined}
+            />
+            <Counter
+              label="Active alerts"
+              value={snapshot.activeAlerts}
+              tone={snapshot.activeAlerts > 0 ? 'critical' : undefined}
+            />
+          </div>
+
+          <section>
+            <h2 className="text-sm font-semibold text-ink-primary">Alerts</h2>
+            <ul className="mt-2 space-y-2">
+              {snapshot.alerts.map((alert) => (
+                <li key={alert.ruleId} className="rounded border border-ink-muted/20 p-3 text-sm">
+                  <span className={`font-medium ${SEVERITY_CLASSES[alert.severity]}`}>{alert.title}</span>
+                  <p className="mt-1 text-ink-secondary">{alert.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold text-ink-primary">Recent events</h2>
+            {snapshot.recentEvents.length === 0 ? (
+              <p className="mt-2 text-sm text-ink-muted">No events in this fetch.</p>
+            ) : (
+              <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto text-sm">
+                {snapshot.recentEvents.map((event, i) => (
+                  <li key={i} className="flex justify-between gap-4">
+                    <span className={SEVERITY_CLASSES[event.severity]}>{event.summary}</span>
+                    <span className="shrink-0 text-xs text-ink-muted">
+                      {new Date(event.createdAt).toLocaleTimeString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -63,10 +63,11 @@ export async function checkAndLog({
   // Distinguishes a genuine policy denial (FGA evaluated the check and
   // said no) from a fail-closed infra error (FGA itself was unreachable
   // or errored) - both produce decision:false, but only the first is a
-  // real authorization signal. Added so the monitoring dashboard's
-  // FGA-denial alert rule (src/lib/monitoring/alerts.ts) can count real
-  // denials without being swamped by transient FGA-client errors, which
-  // are a different kind of problem (infra health, not security).
+  // real authorization signal. Originally added for a monitoring-
+  // dashboard FGA-denial alert rule that was later dropped from that
+  // feature (see monitoring-redesign-v6.md) - kept because /access-log
+  // (src/app/access-log/page.tsx) still reads this marker to show
+  // whether a denial was a real policy decision or an infra error.
   let infraError = false;
   try {
     // Without this, OpenFGA's default (MINIMIZE_LATENCY) is allowed to
@@ -422,8 +423,12 @@ export async function logOboExchange({
 /**
  * The failure counterpart to logOboExchange above - added 2026-09-23,
  * since exchangeToken (lib/obo.ts) previously threw on a failed exchange
- * without writing anything to auditEvents at all, leaving no record for
- * the monitoring dashboard's OBO-failure alert rule to read. Called from
+ * without writing anything to auditEvents at all. Originally added so a
+ * monitoring-dashboard OBO-failure alert rule had something to read;
+ * that rule was later dropped from the monitoring feature (see
+ * monitoring-redesign-v6.md), but this write stays - /access-log
+ * (src/app/access-log/page.tsx) renders obo_exchange events directly,
+ * so a failed exchange still needs its own record. Called from
  * exchangeToken's catch path before it re-throws, so the citizen-facing
  * error behaviour is unchanged - this only adds a record of the failure,
  * it doesn't change what the caller sees.
