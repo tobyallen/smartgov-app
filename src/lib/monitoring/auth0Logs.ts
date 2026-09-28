@@ -44,20 +44,50 @@ async function getManagementToken(): Promise<string> {
 }
 
 // Maps Auth0 tenant log event `type` codes to this app's normalized
-// shape. Reference: https://auth0.com/docs/deploy-monitor/logs/log-event-type-codes
+// shape. Every mapping below is verified directly against Auth0's own
+// OpenAPI log schema (auth0/docs-v2, main/docs/oas/tenant-logs/
+// logs-schema.json - components.schemas.<code>.description), not
+// guessed or copied from a secondary source. This replaces an earlier
+// version with two confirmed-wrong mappings, found 2026-09-28:
+// - `sepft` was labelled as an Attack Protection critical alert; the
+//   real event is "Successful Exchange of Password for Access Token" -
+//   a routine success, not a security signal at all. Removed entirely
+//   rather than remapped, since it's not relevant to this dashboard.
+// - `fce` was labelled "Auth0 Action failed" and fed actionFailureRule
+//   (alerts.ts); the real event is "Failed to change user email" - an
+//   unrelated user-account action. This meant the Action-failure alert
+//   this feature exists partly to catch (a silently-broken provisioning
+//   Action - the exact failure mode already hit once in this project's
+//   real production history) had never actually been watching for a
+//   real Action failure. The correct code, confirmed in the same
+//   schema, is `actions_execution_failed` ("Execution of an Action
+//   failed").
 // Only codes this app's alert rules (alerts.ts) actually consume are
 // mapped to non-'info' severities - everything else still gets recorded
 // (for the raw event list) but won't trigger anything.
 const EVENT_MAP: Record<string, { severity: MonitoringSeverity; summary: (log: Record<string, unknown>) => string }> = {
   s: { severity: 'info', summary: (l) => `Successful login: ${l.user_name ?? l.user_id ?? 'unknown user'}` },
   ss: { severity: 'info', summary: (l) => `Successful signup: ${l.user_name ?? l.user_id ?? 'unknown user'}` },
+  slo: { severity: 'info', summary: (l) => `Logout: ${l.user_name ?? l.user_id ?? 'unknown user'}` },
   f: { severity: 'warning', summary: (l) => `Failed login: ${l.user_name ?? 'unknown user'} — ${l.description ?? ''}`.trim() },
   fu: { severity: 'warning', summary: (l) => `Failed login (invalid username/email): ${l.user_name ?? 'unknown'}` },
   fp: { severity: 'warning', summary: (l) => `Failed login (wrong password): ${l.user_name ?? 'unknown'}` },
-  limit_wc: { severity: 'critical', summary: () => 'Attack Protection: blocked brute-force login attempt' },
-  limit_mu: { severity: 'critical', summary: () => 'Attack Protection: blocked excessive login attempts on one account' },
-  sepft: { severity: 'critical', summary: () => 'Attack Protection: suspicious login flagged/blocked' },
-  fce: { severity: 'critical', summary: (l) => `Auth0 Action failed: ${l.description ?? 'no description'}` },
+  fs: { severity: 'warning', summary: (l) => `Failed signup: ${l.user_name ?? 'unknown user'} — ${l.description ?? ''}`.trim() },
+  // warning, not critical - these are attempts (Auth0 flagging a known-
+  // leaked password), not an enforced block the way limit_wc/limit_mu
+  // are. Same "attempt vs. actual block" distinction already applied to
+  // limit_sul below - kept consistent after an adversarial review
+  // pointed out the first draft treated these two as more severe than
+  // that same reasoning would justify.
+  pwd_leak: { severity: 'warning', summary: () => 'Login attempt using a known leaked password' },
+  signup_pwd_leak: { severity: 'warning', summary: () => 'Signup attempt using a known leaked password' },
+  reset_pwd_leak: { severity: 'warning', summary: () => 'Password-reset attempt using a known leaked password' },
+  limit_wc: { severity: 'critical', summary: () => 'Attack Protection: blocked - too many failed logins into a single account' },
+  limit_mu: { severity: 'critical', summary: () => 'Attack Protection: blocked - too many failed logins/signups from one IP' },
+  limit_sul: { severity: 'warning', summary: () => 'Attack Protection: temporarily blocked - too many logins from one IP' },
+  api_limit: { severity: 'warning', summary: () => 'Auth0 API rate limit reached (Authentication or Management API)' },
+  actions_execution_failed: { severity: 'critical', summary: (l) => `Auth0 Action execution failed: ${l.description ?? 'no description'}` },
+  fdu: { severity: 'warning', summary: (l) => `Failed user deletion: ${l.description ?? ''}`.trim() },
 };
 
 type Auth0LogEntry = {

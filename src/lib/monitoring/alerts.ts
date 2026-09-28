@@ -40,7 +40,14 @@ function failedLoginRule(events: MonitoringEventRecord[]): EvaluatedAlert {
 }
 
 function attackProtectionRule(events: MonitoringEventRecord[]): EvaluatedAlert {
-  const matches = events.filter((e) => ['limit_wc', 'limit_mu', 'sepft'].includes(e.type));
+  // 'sepft' removed 2026-09-28: confirmed against Auth0's own log
+  // schema to mean "Successful Exchange of Password for Access Token" -
+  // a routine success event, not an Attack Protection signal. It was
+  // never a real attack-protection code; see auth0Logs.ts's EVENT_MAP
+  // comment for the full correction.
+  const matches = events.filter((e) =>
+    ['limit_wc', 'limit_mu', 'limit_sul', 'pwd_leak', 'signup_pwd_leak', 'reset_pwd_leak'].includes(e.type),
+  );
   return {
     ruleId: 'attack-protection-block',
     severity: 'critical',
@@ -55,7 +62,12 @@ function attackProtectionRule(events: MonitoringEventRecord[]): EvaluatedAlert {
 }
 
 function actionFailureRule(events: MonitoringEventRecord[]): EvaluatedAlert {
-  const matches = events.filter((e) => e.type === 'fce');
+  // Was 'fce' until 2026-09-28 - confirmed against Auth0's own log
+  // schema that code actually means "Failed to change user email," an
+  // unrelated event. This rule had never once been able to detect a
+  // real Auth0 Action failure. The correct code is
+  // 'actions_execution_failed' ("Execution of an Action failed").
+  const matches = events.filter((e) => e.type === 'actions_execution_failed');
   return {
     ruleId: 'auth0-action-failure',
     severity: 'critical',
