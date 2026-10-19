@@ -130,17 +130,6 @@ export default function ChatPage() {
     setTogglePending(false);
   }
 
-  // Debug-only: forces the delegation_window condition to fail on the
-  // next check without touching the FGA tuple - see expireDelegationNow
-  // in lib/fga.ts. Not part of the citizen-facing story; a presenter's
-  // reliability escape hatch for demoing expiry on cue.
-  async function debugExpireNow() {
-    setTogglePending(true);
-    const res = await fetch('/api/delegation', { method: 'DELETE' });
-    if (res.ok) await refreshDelegation();
-    setTogglePending(false);
-  }
-
   const navLinks: NavLink[] = [
     { label: 'Home', href: '/' },
     { label: 'My case', href: '/case' },
@@ -189,11 +178,11 @@ export default function ChatPage() {
             You can always see your own case — the toggle above only controls what your
             assistant can see.
             {delegated && minutesRemaining !== null && (
-              <span className="ml-1">
+              <div>
                 {minutesRemaining > 0
                   ? `Expires in ${minutesRemaining} min unless revoked first.`
                   : 'Expiring now — the next check will deny it.'}
-              </span>
+              </div>
             )}
           </div>
         </div>
@@ -223,24 +212,6 @@ export default function ChatPage() {
           </span>
         </div>
       </div>
-
-      {delegated && (
-        <div className="mb-4 flex items-center justify-between rounded border border-dashed border-surface-hairline p-2 text-xs text-ink-muted">
-          <span>
-            <strong>Presenter tool, not part of the citizen flow:</strong> fast-forwards the clock
-            on the same grant above, so you can show the 15-minute window lapsing on its own
-            without waiting 15 minutes. Unlike Revoke, the delegation tuple itself is untouched -
-            only its time runs out.
-          </span>
-          <button
-            onClick={debugExpireNow}
-            disabled={togglePending || status !== 'ready'}
-            className="ml-2 shrink-0 rounded border border-surface-hairline px-2 py-1 text-ink-secondary disabled:opacity-40"
-          >
-            Fast-forward to expiry
-          </button>
-        </div>
-      )}
 
       <div className="space-y-2">
         {messages.map((message) => {
