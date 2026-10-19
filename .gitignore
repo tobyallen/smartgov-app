@@ -37,6 +37,12 @@ firebase-debug.log
 # vercel
 .vercel
 
+# Claude Code harness config, not app content
+/.claude/agents/
+
+# Auth0 tenant config dumps (live client IDs, app/org/role data) - never commit
+/auth0-backups/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
