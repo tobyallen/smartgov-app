@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { firestore } from '@/lib/firebase-admin';
-import { checkAndLog } from '@/lib/fga';
+import { checkAndLog, logAppealSubmitted } from '@/lib/fga';
 import { caseIdFor, agentIdFor, findCaseById } from '@/lib/provisioning';
 import { EXPECTED_CASE_SERVICE_AGENT } from '@/lib/mcpAuth';
 
@@ -85,6 +85,11 @@ export async function POST(request: NextRequest) {
   }
 
   await firestore().collection('cases').doc(row.id).update({ status: 'appeal_submitted' });
+  await logAppealSubmitted({
+    onBehalfOf: citizenUserId,
+    agentId: agentIdFor(citizenUserId),
+    caseId: caseIdFor(row.id),
+  });
 
   return NextResponse.json({ submitted: true });
 }

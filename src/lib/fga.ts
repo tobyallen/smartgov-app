@@ -322,6 +322,38 @@ export async function logAppealRevoked({
 }
 
 /**
+ * Logs the submit ACTION, mirroring logAppealRevoked above — otherwise
+ * submitting an appeal looks identical in the access log to any other
+ * agent_can_submit_appeal check that happened to pass (e.g. a repeat
+ * tool call the model made for a case that was already submitted),
+ * with no distinct row saying the status actually changed.
+ * actingPrincipal is the agent, not the citizen, since submit_appeal
+ * only ever runs through the delegated agent - unlike revoke, which a
+ * citizen takes directly (see checkOwner/logAppealRevoked above).
+ */
+export async function logAppealSubmitted({
+  onBehalfOf,
+  agentId,
+  caseId,
+}: {
+  onBehalfOf: string;
+  agentId: string;
+  caseId: string;
+}) {
+  await firestore().collection('auditEvents').add({
+    onBehalfOf,
+    eventType: 'status_change',
+    actingPrincipal: agentId,
+    relation: 'agent_can_submit_appeal',
+    object: caseId,
+    context: null,
+    decision: null,
+    detail: { note: 'appeal submitted', from: 'open', to: 'appeal_submitted' },
+    createdAt: new Date(),
+  });
+}
+
+/**
  * The submit_appeal boundary specifically: delegation must be granted AND
  * the case must still be inside its appeal window. assessmentTime comes
  * from our own `cases` Firestore doc, not from FGA-stored tuple context —

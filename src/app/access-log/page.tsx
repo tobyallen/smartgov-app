@@ -9,20 +9,29 @@ import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Access Log' };
 
-// status_change is only ever produced by logAppealRevoked (lib/fga.ts)
-// today - if a second status_change use appears, this label needs to
-// read detail.note instead of assuming every status_change means the
-// same thing. AuditEventRecord's eventType union now includes
-// 'status_change' explicitly (fixed 2026-09-22 - it had been missing
-// despite being real and already handled here, a stale-type gap, not a
-// runtime bug).
+// status_change now covers two distinct actions - logAppealSubmitted
+// and logAppealRevoked (lib/fga.ts) - that happen to share an
+// eventType, so unlike every other row here it can't be labeled by
+// eventType alone; see STATUS_CHANGE_LABELS below, keyed by detail.note.
 const LABELS: Record<string, string> = {
   check: 'Access check',
   tuple_write: 'Delegation granted',
   tuple_delete: 'Delegation revoked',
   obo_exchange: 'Cross-service token exchange',
-  status_change: 'Appeal revoked',
 };
+
+const STATUS_CHANGE_LABELS: Record<string, string> = {
+  'appeal submitted': 'Appeal submitted',
+  'appeal revoked': 'Appeal revoked',
+};
+
+function labelFor(eventType: string, detail: Record<string, unknown> | null): string {
+  if (eventType === 'status_change') {
+    const note = typeof detail?.note === 'string' ? detail.note : undefined;
+    return (note && STATUS_CHANGE_LABELS[note]) ?? 'Appeal status changed';
+  }
+  return LABELS[eventType] ?? eventType;
+}
 
 // Each of this app's FGA conditions (fga-model.fga) takes exactly two
 // timestamp inputs - "now" and an anchor - and a fixed duration. Rather
@@ -213,7 +222,7 @@ export default async function AccessLogPage() {
           return (
             <li key={e.id} className="rounded border border-surface-hairline px-3 py-2">
               <div className="flex justify-between">
-                <span className="font-medium text-ink-primary">{LABELS[e.eventType] ?? e.eventType}</span>
+                <span className="font-medium text-ink-primary">{labelFor(e.eventType, e.detail)}</span>
                 <span className="text-ink-muted">{e.createdAt.toLocaleTimeString()}</span>
               </div>
               {isOboExchange ? (
