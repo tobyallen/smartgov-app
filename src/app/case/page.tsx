@@ -134,7 +134,7 @@ export default async function CasePage() {
             <div className="mb-1 text-xs font-medium text-status-good">
               What this app actually does
             </div>
-            <pre className="overflow-x-auto rounded bg-black p-2 text-[11px] text-status-good">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-black p-2 text-[11px] text-status-good">
 {`await checkAndLog({
   onBehalfOf: citizenUserId,
   actingPrincipal: \`agent:\${userId}-assistant\`,
@@ -148,7 +148,7 @@ export default async function CasePage() {
             <div className="mb-1 text-xs font-medium text-status-critical">
               What an over-privileged service credential would look like instead
             </div>
-            <pre className="overflow-x-auto rounded bg-black p-2 text-[11px] text-status-critical">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-black p-2 text-[11px] text-status-critical">
 {`// never executed anywhere in this app
 db.query.cases.findFirst({
   where: eq(cases.citizenUserId, targetUserId),

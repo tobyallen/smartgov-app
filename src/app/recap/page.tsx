@@ -134,7 +134,7 @@ export default async function RecapPage() {
         For the technically curious, the actual code — none of what you just read is a
         simplification of what&apos;s really there:
       </p>
-      <div className="mt-2 flex gap-4 text-sm">
+      <div className="mt-2 flex flex-wrap gap-4 text-sm">
         <a
           className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
           href="https://github.com/tobyallen/smartgov-app"

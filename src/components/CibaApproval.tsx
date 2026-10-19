@@ -65,10 +65,10 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex items-start gap-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
         {/* AI agent / caseworker console status */}
-        <section className="w-80 rounded-xl bg-white p-6 shadow-xl">
+        <section className="w-full max-w-80 rounded-xl bg-white p-6 shadow-xl">
           <h2 className="text-lg font-semibold text-gray-900">Bulk contractor step-up</h2>
           <p className="text-sm text-gray-500">
             Human approval required (simulated Client-Initiated Backchannel Authentication, CIBA)
@@ -131,7 +131,7 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
 
         {/* Simulated mobile approval screen */}
         {(state === 'phone' || state === 'approved' || state === 'denied') && (
-          <section className="w-64 rounded-[2rem] border-8 border-gray-900 bg-white p-4 shadow-2xl">
+          <section className="w-full max-w-64 rounded-[2rem] border-8 border-gray-900 bg-white p-4 shadow-2xl">
             <div className="text-center">
               <div className="mx-auto mb-3">
                 <Logo size={48} className="bg-black text-white" />

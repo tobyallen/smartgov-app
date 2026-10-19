@@ -50,7 +50,7 @@ export function ExternalIcon() {
  */
 export function AppNav({ links }: { links: NavLink[] }) {
   return (
-    <div className="mb-4 flex items-center gap-4 text-sm">
+    <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
       <Logo size={24} />
       {links.map((link) => {
         const role = link.role ?? 'internal';
