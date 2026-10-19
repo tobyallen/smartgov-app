@@ -48,8 +48,8 @@ export default async function Home({
       {session && <AppNav links={navLinks} />}
       <h1 className="text-2xl font-semibold text-ink-primary">SmartGov Citizen Portal</h1>
       <p className="mt-2 text-sm text-ink-secondary">
-        Sovereign Intelligence: your AI assistant only sees what you explicitly let it see —
-        and every decision is checked, not assumed.
+        Your AI assistant only sees what you explicitly let it see — and every decision is
+        checked, not assumed.
       </p>
       {personaMismatch && (
         <div className="mt-4 rounded border border-status-warning bg-status-warning/10 px-3 py-2 text-sm text-ink-primary">
@@ -67,10 +67,9 @@ export default async function Home({
         <div className="mt-6">
           <p className="text-sm text-ink-secondary">
             This is a live demo, not a slide. Sign up with any email - even a throwaway one,
-            nothing here is real - and pick a role below. You&apos;ll see your AI assistant get
-            checked against a real authorisation model on every single request it makes on your
-            behalf, and you&apos;ll be able to turn its access on and off and watch the check
-            change live.
+            nothing here is real - and pick a role below. You&apos;ll watch your AI assistant get
+            checked against a real authorisation model on every request it makes for you. Turn
+            its access on and off and watch the check respond live.
           </p>
           <div className="mt-4 flex flex-col gap-4 sm:flex-row">
             <div>

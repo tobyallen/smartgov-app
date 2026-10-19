@@ -119,8 +119,9 @@ export default async function CasePage() {
           demo uses) - a system that decides, fresh on every single request, exactly what your
           assistant is allowed to see. It&apos;s a ReBAC (relationship-based access control)
           system underneath: access is decided by the actual relationships between your assistant
-          and your case, not by a static list of permissions. There&apos;s no insecure version of
-          this app to show you first, because nothing here ever skips that check.
+          and your case, not by a static list of permissions. So you won&apos;t see this app in a
+          mode that skips the check - the comparison below is illustrative code only, never a
+          live toggle.
         </p>
       </OneTimeNote>
 

@@ -164,14 +164,20 @@ export default function AdminChat() {
         <div>
           <div className="font-medium text-ink-primary">Step-up approval for bulk actions</div>
           <div className="text-xs text-ink-muted">
-            Simulates a fresh MFA/CIBA challenge — required before bulk_disable_contractors or
-            bulk_enable_contractors will succeed, and expires 5 minutes after approval. Clicking
-            below opens a simulated out-of-band approval (not a real Auth0 CIBA request) before
-            the actual step-up is recorded. The approval itself is written server-side once the
-            out-of-band step completes — the button below never gets to just assert &quot;I&apos;m
-            approved,&quot; the same way a real caller shouldn&apos;t be trusted to vouch for its
-            own second factor. FGA reads that server record fresh on every bulk-action call, so
-            the approval genuinely has to have happened, not just be claimed.
+            Required before bulk_disable_contractors or bulk_enable_contractors will succeed, and
+            expires 5 minutes after approval. Clicking below simulates the human-approval step of{' '}
+            <a
+              className="text-brand-primary underline hover:text-brand-primary-hover inline-flex items-center gap-1"
+              href="https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-initiated-backchannel-authentication-flow"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CIBA
+            </a>{' '}
+            — no real phone, no real backchannel request. What <em>is</em> real: once you click
+            Approve, the server records a step-up event, and FGA checks that record fresh on
+            every bulk-action call afterward, so a bulk action can&apos;t succeed just because the
+            chat UI claims it was approved.
           </div>
           {stepUpApprovedAt && (
             <div className="mt-1 text-xs text-status-good">Approved at {stepUpApprovedAt}</div>
@@ -216,8 +222,8 @@ export default function AdminChat() {
                 <div className="my-1 rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-ink-primary">
                   The model refused this request for reasons unrelated to your actual
                   permissions — this looks like a false positive on the wording, not a real
-                  policy issue. Try rephrasing, or use the golden-path buttons below instead of
-                  free-form text.
+                  policy issue. Try rephrasing, or use the buttons below instead of free-form
+                  text.
                 </div>
               ) : (
                 <div className={message.role === 'user' ? 'text-right' : ''}>
@@ -271,7 +277,7 @@ export default function AdminChat() {
       </div>
       <p className="mt-1 text-xs text-ink-muted">
         &quot;Try a bulk action&quot; is denied on purpose until you request step-up above -
-        that&apos;s the gate this vignette is demonstrating.
+        that&apos;s the step-up gate in action.
       </p>
 
       {chatError && (

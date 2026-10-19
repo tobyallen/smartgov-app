@@ -159,7 +159,26 @@ export default function ChatPage() {
           request it makes on your behalf will be denied. You can revoke that permission at any
           time, and the very next request will reflect it immediately - or just wait: delegation
           expires on its own after {DELEGATION_WINDOW_MINUTES} minutes, checked fresh every time,
-          not something you have to remember to turn off.
+          not something you have to remember to turn off. Below the chat, you&apos;ll see each
+          request checked against{' '}
+          <a
+            className="text-brand-primary underline hover:text-brand-primary-hover"
+            href="https://auth0.com/docs/secure/fine-grained-authorization"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Auth0 FGA
+          </a>{' '}
+          and the resulting{' '}
+          <a
+            className="text-brand-primary underline hover:text-brand-primary-hover"
+            href="https://datatracker.ietf.org/doc/html/rfc8693"
+            target="_blank"
+            rel="noreferrer"
+          >
+            token exchange
+          </a>{' '}
+          to the MCP server that performs it.
         </p>
       </OneTimeNote>
 
@@ -167,7 +186,8 @@ export default function ChatPage() {
         <div>
           <div className="font-medium text-ink-primary">Allow my AI assistant to access this case</div>
           <div className="text-xs text-ink-muted">
-            You can always see your own case — this only controls what your assistant can see.
+            You can always see your own case — the toggle above only controls what your
+            assistant can see.
             {delegated && minutesRemaining !== null && (
               <span className="ml-1">
                 {minutesRemaining > 0

@@ -70,14 +70,16 @@ export function CibaApproval({ onClose, onComplete }: CibaApprovalProps) {
         {/* AI agent / caseworker console status */}
         <section className="w-80 rounded-xl bg-white p-6 shadow-xl">
           <h2 className="text-lg font-semibold text-gray-900">Bulk contractor step-up</h2>
-          <p className="text-sm text-gray-500">Human approval required (simulated CIBA)</p>
+          <p className="text-sm text-gray-500">
+            Human approval required (simulated Client-Initiated Backchannel Authentication, CIBA)
+          </p>
 
           <div className="my-6 text-center">
             {state === 'waiting' && (
               <>
                 <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
                 <p className="mt-3 font-medium text-gray-900">Awaiting approval...</p>
-                <p className="text-sm text-gray-500">Sending request to the caseworker&apos;s phone</p>
+                <p className="text-sm text-gray-500">Sending request to your phone</p>
               </>
             )}
 

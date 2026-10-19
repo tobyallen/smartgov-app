@@ -81,11 +81,12 @@ export default async function RecapPage() {
           This is the layer RBAC alone can&apos;t do: RBAC answers &quot;can this role use this
           tool at all,&quot; but not &quot;is this specific assistant allowed to touch this
           specific case, right now.&quot; That&apos;s a relationship (ReBAC) — the assistant&apos;s
-          delegated relationship to your case — evaluated against live conditions (a 15-minute
-          delegation window, a 30-day appeal window, a 5-minute step-up window), not a static
-          permission that&apos;s either granted or not. A plain role could never expire on its own
-          the way a condition can; that self-expiry is the whole reason the demo&apos;s delegation
-          toggle is interesting instead of just being another checkbox.
+          delegated relationship to your case. FGA evaluates that relationship against live
+          conditions: a 15-minute delegation window, a 30-day appeal window, a 5-minute step-up
+          window — not a static permission that&apos;s either granted or not. A plain role could
+          never expire on its own the way a condition can. That self-expiry is the whole reason
+          the demo&apos;s delegation toggle is interesting instead of just being another
+          checkbox.
         </p>
         <p>
           Every one of those decisions is sitting in your{' '}
@@ -93,14 +94,39 @@ export default async function RecapPage() {
             access log
           </Link>
           , not reconstructed after the fact from a chat transcript — and the cross-service token
-          exchanges you saw there use a fresh, narrowly-scoped token per hop instead of one shared
-          credential, plus Auth0&apos;s Agent as Principal feature to record which real backend
-          service actually proxied each request (the <code>act</code> claim), separate from and
-          verifiable independently of whatever the assistant&apos;s own delegation state claims.
-          Auth0 could have solved &quot;an AI agent needs to act on a user&apos;s behalf&quot; by
-          inventing a custom header the backend just trusts — instead it&apos;s a real,
-          cryptographically verifiable claim inside a standard OAuth token, which is why none of
-          this had to be taken on faith.
+          exchanges you saw there (chatbot backend →{' '}
+          <a
+            className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
+            href="https://modelcontextprotocol.io/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            MCP
+          </a>{' '}
+          server → case service) use a fresh, narrowly-scoped token per hop instead of one shared
+          credential, plus Auth0&apos;s{' '}
+          <a
+            className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
+            href="https://auth0.com/docs/ai-agents-mcp/agent-as-principal"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Agent as Principal
+          </a>{' '}
+          feature to record which real backend service actually proxied each request (the{' '}
+          <code>act</code> claim), separate from and verifiable independently of whatever the
+          assistant&apos;s own delegation state claims. Auth0 could have solved &quot;an AI agent
+          needs to act on a user&apos;s behalf&quot; by inventing a custom header the backend just
+          trusts — instead it&apos;s a real, cryptographically verifiable claim inside a standard{' '}
+          <a
+            className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
+            href="https://datatracker.ietf.org/doc/html/rfc8693"
+            target="_blank"
+            rel="noreferrer"
+          >
+            OAuth token
+          </a>
+          , which is why none of this had to be taken on faith.
         </p>
       </div>
 

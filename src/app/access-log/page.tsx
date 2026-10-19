@@ -164,8 +164,8 @@ export default async function AccessLogPage() {
       <AppNav links={navLinks} />
       <h1 className="text-xl font-semibold text-ink-primary">Your access log</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Every time your case was viewed or your assistant tried to act on your behalf, deterministically
-        checked and recorded here — not inferred from a chat transcript.
+        Every time your case was viewed or your assistant tried to act on your behalf, it was
+        checked deterministically and recorded here — not inferred from a chat transcript.
       </p>
       <OneTimeNote step="access-log-explainer-seen">
         <p className="mt-3 text-sm text-ink-secondary">
