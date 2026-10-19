@@ -50,35 +50,40 @@ export function ExternalIcon() {
  */
 export function AppNav({ links }: { links: NavLink[] }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
-      <Logo size={24} />
-      {links.map((link) => {
-        const role = link.role ?? 'internal';
-        const className = ROLE_CLASSES[role];
-        if (role === 'external') {
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-b border-surface-hairline py-3 text-sm">
+      <div className="flex items-center gap-2">
+        <Logo size={24} />
+        <span className="font-semibold text-ink-primary">SmartGov</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        {links.map((link) => {
+          const role = link.role ?? 'internal';
+          const className = ROLE_CLASSES[role];
+          if (role === 'external') {
+            return (
+              <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className={className}>
+                {link.label}
+                <ExternalIcon />
+              </a>
+            );
+          }
+          if (link.href.startsWith('/auth/')) {
+            // Auth0's own login/logout routes - not a Next.js page, so a
+            // plain <a> (not <Link>) is deliberate here, same as every
+            // page already did before this component existed.
+            return (
+              <a key={link.href} href={link.href} className={className}>
+                {link.label}
+              </a>
+            );
+          }
           return (
-            <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className={className}>
+            <Link key={link.href} href={link.href} className={className}>
               {link.label}
-              <ExternalIcon />
-            </a>
+            </Link>
           );
-        }
-        if (link.href.startsWith('/auth/')) {
-          // Auth0's own login/logout routes - not a Next.js page, so a
-          // plain <a> (not <Link>) is deliberate here, same as every
-          // page already did before this component existed.
-          return (
-            <a key={link.href} href={link.href} className={className}>
-              {link.label}
-            </a>
-          );
-        }
-        return (
-          <Link key={link.href} href={link.href} className={className}>
-            {link.label}
-          </Link>
-        );
-      })}
+        })}
+      </div>
     </div>
   );
 }
