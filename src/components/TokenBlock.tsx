@@ -125,10 +125,10 @@ function AnnotatedClaimsJson({
       {lines.map((line, i) => {
         const match = Object.keys(knownIds).find((id) => line.includes(id));
         return (
-          <div key={i}>
-            {line}
+          <div key={i} className="flex flex-wrap items-start gap-1">
+            <span>{line}</span>
             {match && (
-              <span className="ml-2 rounded bg-ink-secondary px-1.5 py-0.5 text-[10px] text-white">
+              <span className="rounded bg-ink-secondary px-1.5 py-0.5 text-[10px] text-white">
                 {knownIds[match]}
               </span>
             )}
@@ -194,7 +194,7 @@ export function TokenBlock({
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="mt-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="font-medium text-ink-primary">{label}</div>
         <div className="flex items-center gap-2">
           <button
@@ -218,8 +218,8 @@ export function TokenBlock({
       <pre
         className={
           expanded
-            ? 'mt-1 overflow-auto rounded bg-black p-2 text-[11px] text-status-good'
-            : 'mt-1 max-h-40 overflow-auto rounded bg-black p-2 text-[11px] text-status-good'
+            ? 'mt-1 overflow-auto whitespace-pre-wrap break-all rounded bg-black p-2 text-[11px] text-status-good'
+            : 'mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-black p-2 text-[11px] text-status-good'
         }
       >
         {claims ? <AnnotatedClaimsJson claims={claims} subjectEmail={subjectEmail} /> : '(could not decode)'}

@@ -163,7 +163,7 @@ export default function ChatPage() {
         </p>
       </OneTimeNote>
 
-      <div className="mb-4 flex items-center justify-between rounded border border-surface-hairline p-3">
+      <div className="mb-4 flex flex-col gap-3 rounded border border-surface-hairline p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium text-ink-primary">Allow my AI assistant to access this case</div>
           <div className="text-xs text-ink-muted">
@@ -177,23 +177,23 @@ export default function ChatPage() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:shrink-0">
           <button
             onClick={() => !delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || delegated}
-            className="w-24 rounded bg-status-good px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
+            className="flex-1 rounded bg-status-good px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40 sm:w-24 sm:flex-none"
           >
             Grant delegation
           </button>
           <button
             onClick={() => delegated && toggleDelegation()}
             disabled={togglePending || status !== 'ready' || !delegated}
-            className="w-24 rounded bg-ink-secondary px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40"
+            className="flex-1 rounded bg-ink-secondary px-2 py-1 text-center text-sm leading-tight text-white disabled:opacity-40 sm:w-24 sm:flex-none"
           >
             Revoke delegation
           </button>
           <span
-            className={`w-24 rounded px-2 py-1 text-center text-sm leading-tight ${delegated ? 'bg-status-good/15 text-status-good' : 'bg-ink-secondary/15 text-ink-secondary'}`}
+            className={`flex-1 rounded px-2 py-1 text-center text-sm leading-tight sm:w-24 sm:flex-none ${delegated ? 'bg-status-good/15 text-status-good' : 'bg-ink-secondary/15 text-ink-secondary'}`}
           >
             {/* Fixed label per state, not the transient "..." - the
             box's own size (matching the two buttons above) is what

@@ -160,7 +160,7 @@ export default function AdminChat() {
         </p>
       </OneTimeNote>
 
-      <div className="mb-4 flex items-center justify-between rounded border border-surface-hairline p-3">
+      <div className="mb-4 flex flex-col gap-3 rounded border border-surface-hairline p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium text-ink-primary">Step-up approval for bulk actions</div>
           <div className="text-xs text-ink-muted">
@@ -177,18 +177,18 @@ export default function AdminChat() {
             <div className="mt-1 text-xs text-status-good">Approved at {stepUpApprovedAt}</div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:shrink-0">
           <button
             onClick={requestStepUp}
             disabled={stepUpPending}
-            className="rounded bg-brand-primary px-3 py-1 text-sm text-white hover:bg-brand-primary-hover disabled:opacity-40"
+            className="flex-1 rounded bg-brand-primary px-3 py-1 text-sm text-white hover:bg-brand-primary-hover disabled:opacity-40 sm:flex-none"
           >
             {stepUpPending ? '...' : 'Request step-up'}
           </button>
           <button
             onClick={stepDown}
             disabled={stepUpPending || !stepUpApprovedAt}
-            className="rounded bg-ink-secondary px-3 py-1 text-sm text-white disabled:opacity-40"
+            className="flex-1 rounded bg-ink-secondary px-3 py-1 text-sm text-white disabled:opacity-40 sm:flex-none"
           >
             Step down
           </button>
