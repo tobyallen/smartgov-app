@@ -8,7 +8,7 @@ import { auth0 } from '@/lib/auth0';
 // window configured in lib/auth0.ts) it's a much better experience to
 // bounce straight to login than to land on a page that then quietly
 // fails the first API call it makes.
-const PROTECTED_PATHS = ['/case', '/chat', '/admin', '/access-log', '/recap'];
+const PROTECTED_PATHS = ['/case', '/chat', '/admin', '/access-log'];
 
 export async function proxy(request: NextRequest) {
   const authResponse = await auth0.middleware(request);
