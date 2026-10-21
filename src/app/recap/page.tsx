@@ -7,39 +7,47 @@ import { AppNav, ExternalIcon, type NavLink } from '@/components/AppNav';
 
 export const metadata: Metadata = { title: 'Recap' };
 
+// Deliberately public, unlike every other page here - it's a static
+// explanation of what the demo demonstrates, not a view onto anyone's
+// own case or access log, so there's nothing session-scoped it has to
+// protect. hasUsedTheFlow and the persona-aware nav links below both
+// need a session's uid; a logged-out visitor just gets neither, not a
+// gate.
 export default async function RecapPage() {
   const session = await auth0.getSession();
-  if (!session) {
-    return (
-      <main className="p-6">
-        <a href="/auth/login" className="text-brand-primary underline hover:text-brand-primary-hover">
-          Log in to view the recap
-        </a>
-      </main>
-    );
-  }
 
   // "Have they used the core flow at least once" reuses the existing
   // auditEvents trail rather than new state - any event at all under
-  // this uid means at least one real check has happened.
-  const snap = await firestore()
-    .collection('auditEvents')
-    .where('onBehalfOf', '==', session.user.sub)
-    .limit(1)
-    .get();
-  const hasUsedTheFlow = !snap.empty;
+  // this uid means at least one real check has happened. No session,
+  // no uid to check against, so this is simply false rather than an
+  // error - the "try chatting with your assistant first" prompt below
+  // still applies, it just also covers "you're not even signed in yet."
+  const hasUsedTheFlow = session
+    ? !(
+        await firestore()
+          .collection('auditEvents')
+          .where('onBehalfOf', '==', session.user.sub)
+          .limit(1)
+          .get()
+      ).empty
+    : false;
 
-  const navLinks: NavLink[] = [
-    { label: 'Home', href: '/' },
-    ...(isCaseworker(session)
-      ? [{ label: 'Admin console', href: '/admin' }]
-      : [
-          { label: 'My case', href: '/case' },
-          { label: 'Chat', href: '/chat' },
-        ]),
-    { label: 'Access log', href: '/access-log' },
-    { label: 'Log out', href: '/auth/logout', role: 'destructive' as const },
-  ];
+  const navLinks: NavLink[] = session
+    ? [
+        { label: 'Home', href: '/' },
+        ...(isCaseworker(session)
+          ? [{ label: 'Admin console', href: '/admin' }]
+          : [
+              { label: 'My case', href: '/case' },
+              { label: 'Chat', href: '/chat' },
+            ]),
+        { label: 'Access log', href: '/access-log' },
+        { label: 'Log out', href: '/auth/logout', role: 'destructive' as const },
+      ]
+    : [
+        { label: 'Home', href: '/' },
+        { label: 'Log in', href: '/auth/login' },
+      ];
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -49,11 +57,24 @@ export default async function RecapPage() {
 
       {!hasUsedTheFlow && (
         <p className="mt-2 text-sm text-ink-secondary">
-          Nothing&apos;s been checked under your account yet - try{' '}
-          <Link className="text-brand-primary underline hover:text-brand-primary-hover" href="/chat">
-            chatting with your assistant
-          </Link>{' '}
-          first, then come back here.
+          {session ? (
+            <>
+              Nothing&apos;s been checked under your account yet - try{' '}
+              <Link className="text-brand-primary underline hover:text-brand-primary-hover" href="/chat">
+                chatting with your assistant
+              </Link>{' '}
+              first, then come back here.
+            </>
+          ) : (
+            <>
+              You&apos;re not signed in, so this is the explanation on its own, without anything
+              from your own account - everything below still applies.{' '}
+              <Link className="text-brand-primary underline hover:text-brand-primary-hover" href="/">
+                Sign up
+              </Link>{' '}
+              to see it happen live instead of just reading about it.
+            </>
+          )}
         </p>
       )}
 

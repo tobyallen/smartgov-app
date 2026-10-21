@@ -98,6 +98,14 @@ export default async function Home({
               </p>
             </div>
           </div>
+          <p className="mt-6 text-sm text-ink-secondary">
+            Not ready to sign up?{' '}
+            <a className="text-brand-primary underline hover:text-brand-primary-hover" href="/recap">
+              See what this demo shows
+            </a>{' '}
+            without logging in - it walks through the same RBAC/FGA/MCP mechanics in writing,
+            with links to the actual code.
+          </p>
         </div>
       )}
     </main>
