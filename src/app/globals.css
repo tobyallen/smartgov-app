@@ -46,6 +46,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode disabled - see conversation 2026-10-27.
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -60,6 +61,7 @@
     --surface-hairline: rgba(255, 255, 255, 0.1);
   }
 }
+*/
 
 body {
   background: var(--background);
