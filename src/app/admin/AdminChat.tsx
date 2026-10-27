@@ -142,10 +142,7 @@ export default function AdminChat() {
           caseworker who does have the tools, which specific contractor record they can act on,
           and whether a riskier action needs a fresh approval first.
         </p>
-      </Explainer>
-
-      <Explainer step="admin-mcp-explainer-seen">
-        <p className="text-xs text-ink-muted">
+        <p className="mt-2 text-xs text-ink-muted">
           This chatbot is itself an{' '}
           <a
             className="text-brand-primary underline hover:text-brand-primary-hover inline-flex items-center gap-1"
