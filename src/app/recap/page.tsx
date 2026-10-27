@@ -86,6 +86,22 @@ export default async function RecapPage() {
         machine-readable audit trail rather than inferred from a chat transcript.
       </p>
 
+      <p className="mt-4 rounded border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm text-ink-primary">
+        We&apos;ve written up the full explanation of what&apos;s actually happening here —
+        FGA, on-behalf-of token exchange, and Auth0&apos;s Agent as Principal feature, end to
+        end —{' '}
+        <a
+          className="inline-flex items-center gap-1 text-brand-primary underline hover:text-brand-primary-hover"
+          href="https://www.tobytes.com/articles/smartgov-fga-obo-agent-as-principal-explained"
+          target="_blank"
+          rel="noreferrer"
+        >
+          on the blog
+          <ExternalIcon />
+        </a>
+        .
+      </p>
+
       <div className="mt-4 space-y-4 text-sm text-ink-secondary">
         <p>
           <strong>RBAC decided which tools existed for your role before you ever typed anything.</strong>{' '}
