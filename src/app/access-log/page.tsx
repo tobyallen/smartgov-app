@@ -4,7 +4,7 @@ import { firestore } from '@/lib/firebase-admin';
 import { isCaseworker } from '@/lib/roles';
 import type { AuditEventRecord } from '@/lib/provisioning';
 import { AppNav, type NavLink } from '@/components/AppNav';
-import OneTimeNote from '@/components/OneTimeNote';
+import Explainer from '@/components/Explainer';
 import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Access Log' };
@@ -176,8 +176,8 @@ export default async function AccessLogPage() {
         Every time your case was viewed or your assistant tried to act on your behalf, it was
         checked deterministically and recorded here — not inferred from a chat transcript.
       </p>
-      <OneTimeNote step="access-log-explainer-seen">
-        <p className="mt-3 text-sm text-ink-secondary">
+      <Explainer step="access-log-explainer-seen">
+        <p className="text-sm text-ink-secondary">
           This is the answer to the question the whole demo is built around:{' '}
           <em>did the AI have access, on whose authority, and for how long?</em> An AI agent
           acting on your behalf is only trustworthy if its actions are as accountable and
@@ -197,7 +197,7 @@ export default async function AccessLogPage() {
           works everywhere is a bigger blast radius than several narrow ones, each provably scoped
           to exactly the hop it was issued for.
         </p>
-      </OneTimeNote>
+      </Explainer>
       <ul className="mt-4 space-y-2 text-sm">
         {events.map((e) => {
           // e.detail/e.context come straight from Firestore with no

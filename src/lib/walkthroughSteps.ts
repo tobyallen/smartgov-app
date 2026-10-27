@@ -1,10 +1,11 @@
 'use client';
 
-// Tracks which one-time explainer/narration steps a visitor has already
-// seen, in sessionStorage - not a backend, not tied to the Auth0 session,
-// gone the moment the tab closes. This is what "reload resumes the same
-// point in the narrative" actually means in an app with no single wizard
-// flow: five independent pages, each with its own one-time framing copy.
+// Tracks which explainer/narration steps a visitor has already seen, in
+// sessionStorage - not a backend, not tied to the Auth0 session, gone the
+// moment the tab closes. "Seen" no longer hides a step's content; each
+// Explainer block stays on the page permanently and just defaults to
+// collapsed once its step has been seen before, instead of expanded.
+// Six independent pages share this, each with its own framing copy.
 // Without this, the case page's "what just happened during signup" note
 // only appears/disappears based on a 30s createdAt window - a reload at
 // 31s loses it permanently, a reload at 10s repeats it needlessly. Neither

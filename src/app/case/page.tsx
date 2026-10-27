@@ -4,7 +4,7 @@ import { auth0 } from '@/lib/auth0';
 import { checkAndLog } from '@/lib/fga';
 import { caseIdFor, ensureCitizenProvisioned, findCaseById } from '@/lib/provisioning';
 import { isCaseworker } from '@/lib/roles';
-import OneTimeNote from '@/components/OneTimeNote';
+import Explainer from '@/components/Explainer';
 import { RevokeAppealButton } from '@/components/RevokeAppealButton';
 import { ResetMyDataButton } from '@/components/ResetMyDataButton';
 import { AppNav, type NavLink } from '@/components/AppNav';
@@ -80,13 +80,13 @@ export default async function CasePage() {
     <main className="mx-auto max-w-2xl p-6">
       <AppNav links={navLinks} />
       <h1 className="text-xl font-semibold text-ink-primary">Your case</h1>
-      <OneTimeNote step="case-provisioning-note-seen" initiallyEligible={justProvisioned}>
-        <p className="mt-2 rounded border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm text-ink-primary">
+      <Explainer step="case-provisioning-note-seen" initiallyEligible={justProvisioned}>
+        <p className="rounded border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm text-ink-primary">
           While you were signing up, this app set up your case record and granted your AI
           assistant&apos;s starting permissions - the same kind of check every request it makes
           will go through from now on.
         </p>
-      </OneTimeNote>
+      </Explainer>
       <dl className="mt-4 space-y-2 text-sm">
         <div>
           <dt className="text-ink-muted">Case ID</dt>
@@ -103,8 +103,8 @@ export default async function CasePage() {
         </div>
       </dl>
 
-      <OneTimeNote step="case-fga-explainer-seen">
-        <p className="mt-6 text-sm text-ink-secondary">
+      <Explainer step="case-fga-explainer-seen">
+        <p className="text-sm text-ink-secondary">
           Every time your assistant answers a question about this case, it makes a real API call
           that&apos;s checked against{' '}
           <a
@@ -123,7 +123,7 @@ export default async function CasePage() {
           mode that skips the check - the comparison below is illustrative code only, never a
           live toggle.
         </p>
-      </OneTimeNote>
+      </Explainer>
 
       <details className="mt-3 rounded border border-surface-hairline p-3 text-sm">
         <summary className="cursor-pointer font-medium text-ink-primary">

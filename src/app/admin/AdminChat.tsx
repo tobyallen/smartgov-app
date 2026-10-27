@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import OneTimeNote from '@/components/OneTimeNote';
+import Explainer from '@/components/Explainer';
 import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
 import { ChatMessageText } from '@/components/ChatMessageText';
 import { CibaApproval } from '@/components/CibaApproval';
@@ -124,8 +124,8 @@ export default function AdminChat() {
         ]}
       />
 
-      <OneTimeNote step="admin-rbac-explainer-seen">
-        <p className="mb-3 text-sm text-ink-secondary">
+      <Explainer step="admin-rbac-explainer-seen">
+        <p className="text-sm text-ink-secondary">
           This console is reachable by every visitor - but what you can do here depends on two
           separate checks. Your <strong>role</strong> (citizen vs. caseworker) decides which tools
           even exist for you; a citizen wouldn&apos;t see contractor management tools listed at
@@ -142,10 +142,10 @@ export default function AdminChat() {
           caseworker who does have the tools, which specific contractor record they can act on,
           and whether a riskier action needs a fresh approval first.
         </p>
-      </OneTimeNote>
+      </Explainer>
 
-      <OneTimeNote step="admin-mcp-explainer-seen">
-        <p className="mb-4 text-xs text-ink-muted">
+      <Explainer step="admin-mcp-explainer-seen">
+        <p className="text-xs text-ink-muted">
           This chatbot is itself an{' '}
           <a
             className="text-brand-primary underline hover:text-brand-primary-hover inline-flex items-center gap-1"
@@ -158,7 +158,7 @@ export default function AdminChat() {
           client - the same tools you can trigger by typing below are also exposed as a real,
           independently-callable MCP server at <code>/api/admin-mcp</code>.
         </p>
-      </OneTimeNote>
+      </Explainer>
 
       <div className="mb-4 flex flex-col gap-3 rounded border border-surface-hairline p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

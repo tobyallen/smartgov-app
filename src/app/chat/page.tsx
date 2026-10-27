@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import OneTimeNote from '@/components/OneTimeNote';
+import Explainer from '@/components/Explainer';
 import { chatErrorMessage, isModelContentFilterRefusal, TokenBlock } from '@/components/TokenBlock';
 import { ChatMessageText } from '@/components/ChatMessageText';
 import { AppNav, type NavLink } from '@/components/AppNav';
@@ -141,8 +141,8 @@ export default function ChatPage() {
     <main className="mx-auto max-w-2xl p-4">
       <AppNav links={navLinks} />
 
-      <OneTimeNote step="chat-delegation-explainer-seen">
-        <p className="mb-3 text-sm text-ink-secondary">
+      <Explainer step="chat-delegation-explainer-seen">
+        <p className="text-sm text-ink-secondary">
           Your assistant doesn&apos;t automatically inherit your access to your own data -
           it&apos;s a separate identity, and until you grant it a scoped permission below, every
           request it makes on your behalf will be denied. You can revoke that permission at any
@@ -169,7 +169,7 @@ export default function ChatPage() {
           </a>{' '}
           to the MCP server that performs it.
         </p>
-      </OneTimeNote>
+      </Explainer>
 
       <div className="mb-4 flex flex-col gap-3 rounded border border-surface-hairline p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
